@@ -1,7 +1,8 @@
 import math
+import os
 from PyQt6.QtOpenGLWidgets import QOpenGLWidget
 from PyQt6.QtOpenGL import QOpenGLShaderProgram, QOpenGLShader
-from PyQt6.QtCore import Qt
+from PyQt6.QtCore import Qt, QFile, QTextStream
 from OpenGL import GL as gl
 
 class GLCircleWidget(QOpenGLWidget):
@@ -13,7 +14,26 @@ class GLCircleWidget(QOpenGLWidget):
         self.circleColor = [1.0, 0.0, 0.0]  # 默认红色
         self.scale_x = 1.0
         self.scale_y = 1.0
-        self.size_factor = 1.0  # 新增：用于控制圆的大小
+        self.size_factor = 1.0  # 用于控制圆的大小
+
+    def loadShaderFromFile(self, shader_type, file_path):
+        """从文件加载着色器"""
+        if not os.path.exists(file_path):
+            print(f"Shader file not found: {file_path}")
+            return None
+            
+        shader = QOpenGLShader(shader_type, self)
+        file = QFile(file_path)
+        if file.open(QFile.OpenModeFlag.ReadOnly | QFile.OpenModeFlag.Text):
+            stream = QTextStream(file)
+            shader_source = stream.readAll()
+            file.close()
+            
+            if not shader.compileSourceCode(shader_source):
+                print(f"Shader compilation error: {shader.log()}")
+                return None
+            return shader
+        return None
 
     def initializeGL(self):
         # 配置OpenGL 4.3核心模式
@@ -22,39 +42,26 @@ class GLCircleWidget(QOpenGLWidget):
         fmt.setProfile(fmt.OpenGLContextProfile.CoreProfile)
         self.setFormat(fmt)
 
-        # 顶点着色器 (GLSL 430)
-        vertex_shader = """
-        #version 430 core
-        layout(location = 0) in vec2 position;
-        uniform float scale_x;
-        uniform float scale_y;
-        void main() {
-            // 根据宽高比调整坐标以保持正圆
-            gl_Position = vec4(position.x * scale_x, position.y * scale_y, 0.0, 1.0);
-        }
-        """
-
-        # 片段着色器 (GLSL 430)
-        fragment_shader = """
-        #version 430 core
-        out vec4 fragColor;
-        uniform vec3 circleColor;
-        void main() {
-            fragColor = vec4(circleColor, 1.0);
-        }
-        """
-
         # 创建着色器程序
         self.program = QOpenGLShaderProgram(self)
-        if not self.program.addShaderFromSourceCode(QOpenGLShader.ShaderTypeBit.Vertex, vertex_shader):
-            print("顶点着色器错误:", self.program.log())
         
-        if not self.program.addShaderFromSourceCode(QOpenGLShader.ShaderTypeBit.Fragment, fragment_shader):
-            print("片段着色器错误:", self.program.log())
+        # 从文件加载着色器
+        vertex_shader = self.loadShaderFromFile(
+            QOpenGLShader.ShaderTypeBit.Vertex, "circle.vert"
+        )
+        fragment_shader = self.loadShaderFromFile(
+            QOpenGLShader.ShaderTypeBit.Fragment, "circle.frag"
+        )
         
-        if not self.program.link():
-            raise RuntimeError("着色器链接失败: " + self.program.log())
-
+        if vertex_shader and fragment_shader:
+            self.program.addShader(vertex_shader)
+            self.program.addShader(fragment_shader)
+            
+            if not self.program.link():
+                raise RuntimeError("Shader program link failed: " + self.program.log())
+        else:
+            raise RuntimeError("Shader loading failed")
+            
         # 生成圆形顶点数据
         self.generateCircleVertices(0.5)  # 初始半径为0.5
 
@@ -105,14 +112,7 @@ class GLCircleWidget(QOpenGLWidget):
         gl.glDrawArrays(gl.GL_TRIANGLE_FAN, 0, 362)  # 361顶点+圆心
         self.program.release()
         
-
-
     def resizeGL(self, w, h):
-        gl.glViewport(0, 0, w, h)
-        # 请求更新宽高比显示
-
-    def resizeGL(self, w, h):
-        # 更新宽高比
         gl.glViewport(0, 0, w, h)
         self.update()  # 触发重绘
         

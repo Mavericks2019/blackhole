@@ -1,18 +1,25 @@
 import sys
+import os
 from PyQt6.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout, 
-                             QHBoxLayout, QColorDialog,QLabel,QFrame,QGroupBox)
+                             QHBoxLayout, QColorDialog, QLabel, QFrame, 
+                             QGroupBox, QTabWidget, QStackedWidget, QMessageBox,QPushButton)
 from PyQt6.QtGui import QPalette, QColor, QFont
 from PyQt6.QtCore import Qt
 
 # 从其他文件导入组件
 from gl_circle_widget import GLCircleWidget
 from control_panel import ControlPanel
+from gl_basic_widget import GLBasicWidget
+from basic_control_panel import BasicControlPanel
 
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("OpenGL Circle Demo - Dark Theme")
-        self.setGeometry(100, 100, 900, 700)
+        self.setWindowTitle("OpenGL Demo - Dark Theme")
+        self.setGeometry(100, 100, 1000, 750)
+        
+        # 检查着色器文件是否存在
+        self.checkShaderFiles()
         
         # 创建深色调色板
         dark_palette = self.createDarkPalette()
@@ -28,24 +35,74 @@ class MainWindow(QMainWindow):
         main_layout.setSpacing(15)
         main_layout.setContentsMargins(15, 15, 15, 15)
         
-        # 创建OpenGL画布
-        self.canvas = GLCircleWidget()
-        main_layout.addWidget(self.canvas, 3)  # 画板占据3/4空间
+        # 创建左侧面板（包含标签页和画布）
+        left_panel = QWidget()
+        left_layout = QVBoxLayout(left_panel)
+        left_layout.setSpacing(15)
         
-        # 创建右侧控制面板
-        self.control_panel = ControlPanel()
-        self.applyControlPanelStyles()
-        main_layout.addWidget(self.control_panel, 1)  # 控制面板占据1/4空间
+        # 创建标签页控件
+        self.tab_widget = QTabWidget()
+        self.tab_widget.setTabPosition(QTabWidget.TabPosition.North)
+        self.tab_widget.setDocumentMode(True)
+        self.tab_widget.tabBar().setExpanding(True)
+        
+        # 创建圆形演示标签页
+        circle_tab = QWidget()
+        circle_layout = QVBoxLayout(circle_tab)
+        self.circle_canvas = GLCircleWidget()
+        circle_layout.addWidget(self.circle_canvas)
+        self.tab_widget.addTab(circle_tab, "Circle Demo")
+        
+        # 创建基本功能演示标签页
+        basic_tab = QWidget()
+        basic_layout = QVBoxLayout(basic_tab)
+        self.basic_canvas = GLBasicWidget()
+        basic_layout.addWidget(self.basic_canvas)
+        self.tab_widget.addTab(basic_tab, "Basic Demo")
+        
+        left_layout.addWidget(self.tab_widget)
+        main_layout.addWidget(left_panel, 3)  # 左侧占据3/4空间
+        
+        # 创建右侧控制面板堆栈
+        self.control_stack = QStackedWidget()
+        
+        # 圆形控制面板
+        self.circle_control = ControlPanel()
+        self.applyCircleControlStyles()
+        self.control_stack.addWidget(self.circle_control)
+        
+        # 基本功能控制面板
+        self.basic_control = BasicControlPanel()
+        self.applyBasicControlStyles()
+        self.control_stack.addWidget(self.basic_control)
+        
+        main_layout.addWidget(self.control_stack, 1)  # 控制面板占据1/4空间
         
         # 连接信号
-        self.control_panel.colorSelected.connect(self.canvas.setCircleColor)
-        self.control_panel.customColorClicked.connect(self.chooseCustomColor)
-        self.control_panel.sizeChanged.connect(self.adjustCircleSize)
-        # 新增：连接宽高比更新请求信号
-        self.control_panel.requestAspectRatioUpdate.connect(self.updateAspectRatio)
+        self.connectSignals()
+        
+        # 标签页切换事件
+        self.tab_widget.currentChanged.connect(self.onTabChanged)
         
         # 初始更新宽高比
-        self.updateAspectRatio()
+        self.onTabChanged(0)  # 默认选择第一个标签页
+
+    def checkShaderFiles(self):
+        """检查着色器文件是否存在"""
+        shader_files = [
+            "circle.vert", "circle.frag",
+            "basic.vert", "basic.frag"
+        ]
+        
+        missing_files = [f for f in shader_files if not os.path.exists(f)]
+        
+        if missing_files:
+            msg = QMessageBox()
+            msg.setIcon(QMessageBox.Icon.Critical)
+            msg.setWindowTitle("Shader Files Missing")
+            msg.setText("Required shader files not found:")
+            msg.setInformativeText("\n".join(missing_files))
+            msg.exec()
 
     def createDarkPalette(self):
         """创建深色调色板"""
@@ -65,25 +122,22 @@ class MainWindow(QMainWindow):
         dark_palette.setColor(QPalette.ColorRole.Link, QColor(100, 150, 200))
         return dark_palette
 
-    def applyControlPanelStyles(self):
-        """应用控制面板的样式"""
+    def applyCircleControlStyles(self):
+        """应用圆形控制面板的样式"""
         # 控制面板样式
-        self.control_panel.setStyleSheet("""
+        self.circle_control.setStyleSheet("""
             background-color: #2d2d3a;
             border-radius: 8px;
             border: 1px solid #3a3a4a;
         """)
         
         # 标题样式
-        self.control_panel.findChild(QLabel, None).setStyleSheet("""
-            font-size: 18px;
-            font-weight: bold;
-            color: #d0d0ff;
-            padding: 10px 0;
-        """)
+        title_label = self.circle_control.findChild(QLabel, None)
+        if title_label and "OpenGL Circle Controls" in title_label.text():
+            title_label.setStyleSheet("font-size: 18px; font-weight: bold; color: #d0d0ff; padding: 10px 0;")
         
         # 分隔线样式
-        for separator in self.control_panel.findChildren(QFrame):
+        for separator in self.circle_control.findChildren(QFrame):
             if separator.frameShape() == QFrame.Shape.HLine:
                 separator.setStyleSheet("background-color: #3a3a4a;")
         
@@ -105,7 +159,7 @@ class MainWindow(QMainWindow):
             }
         """
         
-        for group in self.control_panel.findChildren(QGroupBox):
+        for group in self.circle_control.findChildren(QGroupBox):
             group.setStyleSheet(group_style)
             
             # 特定组内标签样式
@@ -128,7 +182,7 @@ class MainWindow(QMainWindow):
         }
         
         for name, color in colors.items():
-            btn = self.control_panel.color_buttons.get(name)
+            btn = self.circle_control.color_buttons.get(name)
             if btn:
                 text_color = 'black' if (color[0]*0.299 + color[1]*0.587 + color[2]*0.114) > 0.7 else 'white'
                 btn.setStyleSheet(f"""
@@ -150,7 +204,7 @@ class MainWindow(QMainWindow):
                 """)
         
         # 自定义按钮样式
-        self.control_panel.custom_btn.setStyleSheet("""
+        self.circle_control.custom_btn.setStyleSheet("""
             QPushButton {
                 background-color: #505060;
                 color: #e0e0ff;
@@ -170,7 +224,7 @@ class MainWindow(QMainWindow):
         """)
         
         # 滑块样式
-        self.control_panel.size_slider.setStyleSheet("""
+        self.circle_control.size_slider.setStyleSheet("""
             QSlider::groove:horizontal {
                 border: 1px solid #3a3a4a;
                 height: 8px;
@@ -195,16 +249,110 @@ class MainWindow(QMainWindow):
         """)
         
         # 信息标签样式
-        for label in self.control_panel.info_group.findChildren(QLabel):
-            label.setStyleSheet("color: #c0c0d0;")
+        info_group = self.circle_control.findChild(QGroupBox, "info_group")
+        if info_group:
+            for label in info_group.findChildren(QLabel):
+                label.setStyleSheet("color: #c0c0d0;")
         
         # 页脚样式
-        self.control_panel.footer_label.setStyleSheet("color: #9090a0; font-size: 10px; margin-top: 10px;")
+        self.circle_control.footer_label.setStyleSheet("color: #9090a0; font-size: 10px; margin-top: 10px;")
+
+    def applyBasicControlStyles(self):
+        """应用基本功能控制面板的样式"""
+        # 控制面板样式
+        self.basic_control.setStyleSheet("""
+            background-color: #2d2d3a;
+            border-radius: 8px;
+            border: 1px solid #3a3a4a;
+        """)
+        
+        # 标题样式
+        title_label = self.basic_control.findChild(QLabel, None)
+        if title_label and "OpenGL Basic Controls" in title_label.text():
+            title_label.setStyleSheet("font-size: 18px; font-weight: bold; color: #d0d0ff; padding: 10px 0;")
+        
+        # 分隔线样式
+        for separator in self.basic_control.findChildren(QFrame):
+            if separator.frameShape() == QFrame.Shape.HLine:
+                separator.setStyleSheet("background-color: #3a3a4a;")
+        
+        # 组框样式
+        group_style = """
+            QGroupBox {
+                font-weight: bold;
+                color: #a0a0c0;
+                border: 1px solid #3a3a4a;
+                border-radius: 5px;
+                margin-top: 1ex;
+                background-color: rgba(40, 40, 50, 180);
+            }
+            QGroupBox::title {
+                subcontrol-origin: margin;
+                left: 10px;
+                padding: 0 5px;
+                color: #c0c0ff;
+            }
+        """
+        
+        for group in self.basic_control.findChildren(QGroupBox):
+            group.setStyleSheet(group_style)
+            
+            # 标签样式
+            for label in group.findChildren(QLabel):
+                label.setStyleSheet("color: #c0c0d0;")
+        
+        # 按钮样式
+        rotate_btn = self.basic_control.findChild(QPushButton, "rotate_btn")
+        if rotate_btn:
+            rotate_btn.setStyleSheet("""
+                QPushButton {
+                    background-color: #6a6a8a;
+                    color: #e0e0ff;
+                    border: 1px solid #8888aa;
+                    border-radius: 5px;
+                    padding: 12px;
+                    font-weight: bold;
+                    font-size: 14px;
+                    min-height: 40px;
+                }
+                QPushButton:hover {
+                    background-color: #7a7a9a;
+                    border: 2px solid #a0a0c0;
+                }
+                QPushButton:pressed {
+                    background-color: #5a5a7a;
+                }
+            """)
+        
+        # 页脚样式
+        footer_label = self.basic_control.findChild(QLabel, None)
+        if footer_label and "©" in footer_label.text():
+            footer_label.setStyleSheet("color: #9090a0; font-size: 10px; margin-top: 10px;")
+
+    def connectSignals(self):
+        """连接所有信号"""
+        # 圆形演示信号
+        self.circle_control.colorSelected.connect(self.circle_canvas.setCircleColor)
+        self.circle_control.customColorClicked.connect(self.chooseCustomColor)
+        self.circle_control.sizeChanged.connect(self.adjustCircleSize)
+        self.circle_control.requestAspectRatioUpdate.connect(self.updateAspectRatio)
+        
+        # 基本功能信号
+        self.basic_control.rotateRequested.connect(self.basic_canvas.rotateTriangle)
+
+    def onTabChanged(self, index):
+        """标签页切换事件处理"""
+        # 切换到对应的控制面板
+        self.control_stack.setCurrentIndex(index)
+        
+        # 更新宽高比（仅圆形演示需要）
+        if index == 0:  # 圆形演示
+            self.updateAspectRatio()
 
     def updateAspectRatio(self):
-        """更新宽高比显示"""
-        width = self.canvas.width()
-        height = self.canvas.height()
+        """更新宽高比显示（仅圆形演示）"""
+        width = self.circle_canvas.width()
+        height = self.circle_canvas.height()
         
         if width == 0 or height == 0:
             return
@@ -216,7 +364,7 @@ class MainWindow(QMainWindow):
             aspect = height / width
             ratio_text = f"Current: 1 : {aspect:.2f}"
         
-        self.control_panel.setAspectRatio(ratio_text)
+        self.circle_control.setAspectRatio(ratio_text)
 
     def chooseCustomColor(self):
         # 使用深色主题的颜色对话框
@@ -225,18 +373,17 @@ class MainWindow(QMainWindow):
             r = color.red() / 255.0
             g = color.green() / 255.0
             b = color.blue() / 255.0
-            self.canvas.setCircleColor(r, g, b)
+            self.circle_canvas.setCircleColor(r, g, b)
 
     def adjustCircleSize(self, value):
-        self.control_panel.setSizeValue(value)
-        # 调用新的setCircleSize方法
-        self.canvas.setCircleSize(value)
-        # 提示用户需要进一步实现
-        print(f"Circle size adjusted to {value}% (implementation required)")
+        self.circle_control.setSizeValue(value)
+        self.circle_canvas.setCircleSize(value)
         
     def resizeEvent(self, event):
         super().resizeEvent(event)
-        self.updateAspectRatio()
+        # 仅在圆形演示标签激活时更新宽高比
+        if self.tab_widget.currentIndex() == 0:
+            self.updateAspectRatio()
 
 
 if __name__ == "__main__":

@@ -43,8 +43,38 @@ class MainWindow(QMainWindow):
         # 创建标签页控件
         self.tab_widget = QTabWidget()
         self.tab_widget.setTabPosition(QTabWidget.TabPosition.North)
-        self.tab_widget.setDocumentMode(True)
-        self.tab_widget.tabBar().setExpanding(True)
+        self.tab_widget.setDocumentMode(False)  # 关闭文档模式，允许自定义样式
+        
+        # 添加紧凑的圆角标签页样式
+        self.tab_widget.setStyleSheet("""
+            QTabWidget::pane {
+                border: none;
+                margin-top: 4px;
+            }
+            QTabBar::tab {
+                background: #3a3a4a;
+                color: #c0c0d0;
+                padding: 8px 16px;
+                margin-right: 4px;
+                border-top-left-radius: 8px;
+                border-top-right-radius: 8px;
+                border: 1px solid #3a3a4a;
+                border-bottom: none;
+                font-weight: bold;
+                font-size: 12px;
+            }
+            QTabBar::tab:selected {
+                background: #505060;
+                color: #ffffff;
+                border-color: #5a5a6a;
+            }
+            QTabBar::tab:hover {
+                background: #454555;
+            }
+            QTabBar::tab:!selected {
+                margin-top: 4px;
+            }
+        """)
         
         # 创建圆形演示标签页
         circle_tab = QWidget()
@@ -90,8 +120,8 @@ class MainWindow(QMainWindow):
     def checkShaderFiles(self):
         """检查着色器文件是否存在"""
         shader_files = [
-            "circle.vert", "circle.frag",
-            "basic.vert", "basic.frag"
+            "shaders/circle.vert", "shaders/circle.frag",
+            "shaders/basic.vert", "shaders/basic.frag"
         ]
         
         missing_files = [f for f in shader_files if not os.path.exists(f)]

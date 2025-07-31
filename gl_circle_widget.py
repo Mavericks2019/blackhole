@@ -47,10 +47,10 @@ class GLCircleWidget(QOpenGLWidget):
         
         # 从文件加载着色器
         vertex_shader = self.loadShaderFromFile(
-            QOpenGLShader.ShaderTypeBit.Vertex, "circle.vert"
+            QOpenGLShader.ShaderTypeBit.Vertex, "shaders/circle.vert"
         )
         fragment_shader = self.loadShaderFromFile(
-            QOpenGLShader.ShaderTypeBit.Fragment, "circle.frag"
+            QOpenGLShader.ShaderTypeBit.Fragment, "shaders/circle.frag"
         )
         
         if vertex_shader and fragment_shader:

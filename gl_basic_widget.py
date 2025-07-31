@@ -45,10 +45,10 @@ class GLBasicWidget(QOpenGLWidget):
         
         # 从文件加载着色器
         vertex_shader = self.loadShaderFromFile(
-            QOpenGLShader.ShaderTypeBit.Vertex, "basic.vert"
+            QOpenGLShader.ShaderTypeBit.Vertex, "shaders/basic.vert"
         )
         fragment_shader = self.loadShaderFromFile(
-            QOpenGLShader.ShaderTypeBit.Fragment, "basic.frag"
+            QOpenGLShader.ShaderTypeBit.Fragment, "shaders/basic.frag"
         )
         
         if vertex_shader and fragment_shader:

@@ -7,10 +7,10 @@ from PyQt6.QtGui import QPalette, QColor, QFont
 from PyQt6.QtCore import Qt
 
 # 从其他文件导入组件
-from gl_circle_widget import GLCircleWidget
-from control_panel import ControlPanel
-from gl_basic_widget import GLBasicWidget
-from basic_control_panel import BasicControlPanel
+from widgets.gl_circle_widget import GLCircleWidget
+from tabs.control_panel import ControlPanel
+from widgets.gl_basic_widget import GLBasicWidget
+from tabs.basic_control_panel import BasicControlPanel
 
 class MainWindow(QMainWindow):
     def __init__(self):

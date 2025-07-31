@@ -15,6 +15,7 @@ class GLCircleWidget(QOpenGLWidget):
         self.program = None
         self.vbo = None
         self.circleColor = [1.0, 0.0, 0.0]  # 默认红色
+        self.aspect_ratio = 1.0  # 宽高比
 
     def initializeGL(self):
         # 配置OpenGL 4.3核心模式
@@ -27,8 +28,10 @@ class GLCircleWidget(QOpenGLWidget):
         vertex_shader = """
         #version 430 core
         layout(location = 0) in vec2 position;
+        uniform float aspect_ratio;  // 宽高比
         void main() {
-            gl_Position = vec4(position, 0.0, 1.0);
+            // 根据宽高比调整x坐标以保持正圆
+            gl_Position = vec4(position.x * aspect_ratio, position.y, 0.0, 1.0);
         }
         """
 
@@ -70,11 +73,17 @@ class GLCircleWidget(QOpenGLWidget):
         if not self.program or not self.vbo:
             return
 
-        gl.glClearColor(0.1, 0.1, 0.1, 1.0)  # 保持深色背景
+        # 计算当前宽高比
+        width = self.width()
+        height = self.height()
+        self.aspect_ratio = height / width if width > height else 1.0
+
+        gl.glClearColor(0.1, 0.1, 0.1, 1.0)
         gl.glClear(gl.GL_COLOR_BUFFER_BIT)
 
         self.program.bind()
         self.program.setUniformValue("circleColor", *self.circleColor)
+        self.program.setUniformValue("aspect_ratio", self.aspect_ratio)
         
         gl.glBindBuffer(gl.GL_ARRAY_BUFFER, self.vbo)
         gl.glEnableVertexAttribArray(0)
@@ -84,6 +93,8 @@ class GLCircleWidget(QOpenGLWidget):
         self.program.release()
 
     def resizeGL(self, w, h):
+        # 更新宽高比
+        self.aspect_ratio = h / w if w > h else 1.0
         gl.glViewport(0, 0, w, h)
         
     def setCircleColor(self, r, g, b):
@@ -95,7 +106,7 @@ class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("OpenGL Circle Demo - Dark Theme")
-        self.setGeometry(100, 100, 2480, 1200)
+        self.setGeometry(100, 100, 900, 700)
         
         # 创建深色调色板
         dark_palette = QPalette()
@@ -286,6 +297,23 @@ class MainWindow(QMainWindow):
         
         control_layout.addWidget(size_group)
         
+        # 宽高比信息
+        ratio_group = QGroupBox("Aspect Ratio")
+        ratio_group.setStyleSheet(color_group.styleSheet())
+        ratio_layout = QVBoxLayout(ratio_group)
+        
+        self.ratio_label = QLabel("Current: 1.00")
+        self.ratio_label.setStyleSheet("font-weight: bold; color: #d0d0ff; font-size: 14px;")
+        self.ratio_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        ratio_layout.addWidget(self.ratio_label)
+        
+        ratio_info = QLabel("To maintain circle shape:\nWidth : Height = 1 : 1")
+        ratio_info.setStyleSheet("color: #c0c0d0;")
+        ratio_info.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        ratio_layout.addWidget(ratio_info)
+        
+        control_layout.addWidget(ratio_group)
+        
         # 添加拉伸因子使控件居中
         control_layout.addStretch(1)
         
@@ -301,6 +329,7 @@ class MainWindow(QMainWindow):
             "- Modern OpenGL pipeline<br>"
             "- GLSL 430 shaders<br>"
             "- Vertex Buffer Object (VBO)<br>"
+            "- Aspect ratio correction<br>"
             "- Interactive controls"
         )
         info_label.setStyleSheet("color: #c0c0d0;")
@@ -316,6 +345,17 @@ class MainWindow(QMainWindow):
         control_layout.addWidget(footer_label)
         
         main_layout.addWidget(control_panel, 1)  # 控制面板占据1/4空间
+        
+        # 监听窗口大小变化
+        self.canvas.resized.connect(self.updateAspectRatio)
+
+    def updateAspectRatio(self):
+        """更新宽高比显示"""
+        width = self.canvas.width()
+        height = self.canvas.height()
+        aspect = width / height
+        self.ratio_label.setText(f"Current: {aspect:.2f}")
+        self.ratio_label.setToolTip(f"Canvas size: {width} x {height}")
 
     def chooseCustomColor(self):
         # 使用深色主题的颜色对话框
@@ -330,6 +370,10 @@ class MainWindow(QMainWindow):
         self.size_value_label.setText(f"Size: {value}%")
         # 提示用户需要进一步实现
         print(f"Circle size adjusted to {value}% (implementation required)")
+        
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        self.updateAspectRatio()
 
 
 if __name__ == "__main__":

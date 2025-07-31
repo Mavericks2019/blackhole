@@ -3,13 +3,12 @@ import math
 from PyQt6.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, 
                              QPushButton, QSlider, QLabel, QGroupBox, QColorDialog, QFrame)
 from PyQt6.QtOpenGLWidgets import QOpenGLWidget
-from PyQt6.QtGui import QSurfaceFormat, QColor, QPalette
+from PyQt6.QtGui import QSurfaceFormat, QColor, QPalette, QFont
 from PyQt6.QtOpenGL import QOpenGLShaderProgram, QOpenGLShader
 from PyQt6.QtCore import Qt
 from OpenGL import GL as gl
 
 class GLCircleWidget(QOpenGLWidget):
-    # 原有画布代码保持不变
     def __init__(self):
         super().__init__()
         self.setMinimumSize(600, 600)
@@ -71,7 +70,7 @@ class GLCircleWidget(QOpenGLWidget):
         if not self.program or not self.vbo:
             return
 
-        gl.glClearColor(0.1, 0.1, 0.1, 1.0)
+        gl.glClearColor(0.1, 0.1, 0.1, 1.0)  # 保持深色背景
         gl.glClear(gl.GL_COLOR_BUFFER_BIT)
 
         self.program.bind()
@@ -95,12 +94,30 @@ class GLCircleWidget(QOpenGLWidget):
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("OpenGL Circle Demo")
-        self.setGeometry(100, 100, 900, 700)
+        self.setWindowTitle("OpenGL Circle Demo - Dark Theme")
+        self.setGeometry(100, 100, 2480, 1200)
+        
+        # 创建深色调色板
+        dark_palette = QPalette()
+        dark_palette.setColor(QPalette.ColorRole.Window, QColor(45, 45, 55))
+        dark_palette.setColor(QPalette.ColorRole.WindowText, QColor(220, 220, 220))
+        dark_palette.setColor(QPalette.ColorRole.Base, QColor(35, 35, 45))
+        dark_palette.setColor(QPalette.ColorRole.AlternateBase, QColor(45, 45, 55))
+        dark_palette.setColor(QPalette.ColorRole.ToolTipBase, QColor(220, 220, 220))
+        dark_palette.setColor(QPalette.ColorRole.ToolTipText, QColor(220, 220, 220))
+        dark_palette.setColor(QPalette.ColorRole.Text, QColor(220, 220, 220))
+        dark_palette.setColor(QPalette.ColorRole.Button, QColor(65, 65, 75))
+        dark_palette.setColor(QPalette.ColorRole.ButtonText, QColor(220, 220, 220))
+        dark_palette.setColor(QPalette.ColorRole.BrightText, Qt.GlobalColor.red)
+        dark_palette.setColor(QPalette.ColorRole.Highlight, QColor(110, 110, 170))
+        dark_palette.setColor(QPalette.ColorRole.HighlightedText, Qt.GlobalColor.white)
+        dark_palette.setColor(QPalette.ColorRole.Link, QColor(100, 150, 200))
         
         # 创建主窗口中央部件
         central_widget = QWidget()
         self.setCentralWidget(central_widget)
+        central_widget.setPalette(dark_palette)
+        central_widget.setAutoFillBackground(True)
         
         # 主布局
         main_layout = QHBoxLayout(central_widget)
@@ -114,7 +131,11 @@ class MainWindow(QMainWindow):
         # 创建右侧控制面板
         control_panel = QFrame()
         control_panel.setFrameShape(QFrame.Shape.StyledPanel)
-        control_panel.setStyleSheet("background-color: #f0f0f0; border-radius: 8px;")
+        control_panel.setStyleSheet("""
+            background-color: #2d2d3a;
+            border-radius: 8px;
+            border: 1px solid #3a3a4a;
+        """)
         control_layout = QVBoxLayout(control_panel)
         control_layout.setSpacing(15)
         control_layout.setContentsMargins(15, 15, 15, 15)
@@ -124,7 +145,7 @@ class MainWindow(QMainWindow):
         title_label.setStyleSheet("""
             font-size: 18px;
             font-weight: bold;
-            color: #333;
+            color: #d0d0ff;
             padding: 10px 0;
         """)
         title_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
@@ -134,6 +155,7 @@ class MainWindow(QMainWindow):
         separator = QFrame()
         separator.setFrameShape(QFrame.Shape.HLine)
         separator.setFrameShadow(QFrame.Shadow.Sunken)
+        separator.setStyleSheet("background-color: #3a3a4a;")
         control_layout.addWidget(separator)
         
         # 颜色控制部分
@@ -141,17 +163,21 @@ class MainWindow(QMainWindow):
         color_group.setStyleSheet("""
             QGroupBox {
                 font-weight: bold;
-                border: 1px solid #aaa;
+                color: #a0a0c0;
+                border: 1px solid #3a3a4a;
                 border-radius: 5px;
                 margin-top: 1ex;
+                background-color: rgba(40, 40, 50, 180);
             }
             QGroupBox::title {
                 subcontrol-origin: margin;
                 left: 10px;
                 padding: 0 5px;
+                color: #c0c0ff;
             }
         """)
         color_layout = QVBoxLayout(color_group)
+        color_layout.setSpacing(8)
         
         # 颜色按钮
         colors = [
@@ -160,7 +186,9 @@ class MainWindow(QMainWindow):
             ("Blue", (0.0, 0.0, 1.0)),
             ("Yellow", (1.0, 1.0, 0.0)),
             ("Purple", (0.6, 0.0, 0.8)),
-            ("Cyan", (0.0, 1.0, 1.0))
+            ("Cyan", (0.0, 1.0, 1.0)),
+            ("White", (1.0, 1.0, 1.0)),
+            ("Orange", (1.0, 0.5, 0.0))
         ]
         
         for name, color in colors:
@@ -168,13 +196,17 @@ class MainWindow(QMainWindow):
             btn.setStyleSheet(f"""
                 QPushButton {{
                     background-color: rgb({int(color[0]*255)}, {int(color[1]*255)}, {int(color[2]*255)});
-                    color: {'black' if color[0]+color[1] > 1.0 else 'white'};
-                    border: 1px solid #777;
+                    color: {'black' if (color[0]*0.299 + color[1]*0.587 + color[2]*0.114) > 0.7 else 'white'};
+                    border: 1px solid #555;
                     border-radius: 5px;
                     padding: 8px;
                     font-weight: bold;
+                    min-height: 30px;
                 }}
                 QPushButton:hover {{
+                    border: 2px solid #fff;
+                }}
+                QPushButton:pressed {{
                     background-color: rgba({int(color[0]*255)}, {int(color[1]*255)}, {int(color[2]*255)}, 200);
                 }}
             """)
@@ -185,15 +217,20 @@ class MainWindow(QMainWindow):
         custom_btn = QPushButton("Custom Color")
         custom_btn.setStyleSheet("""
             QPushButton {
-                background-color: #fff;
-                color: #333;
-                border: 1px solid #777;
+                background-color: #505060;
+                color: #e0e0ff;
+                border: 1px solid #666677;
                 border-radius: 5px;
                 padding: 8px;
                 font-weight: bold;
+                min-height: 30px;
             }
             QPushButton:hover {
-                background-color: #e0e0e0;
+                background-color: #606070;
+                border: 2px solid #8888aa;
+            }
+            QPushButton:pressed {
+                background-color: #404050;
             }
         """)
         custom_btn.clicked.connect(self.chooseCustomColor)
@@ -205,8 +242,10 @@ class MainWindow(QMainWindow):
         size_group = QGroupBox("Circle Size")
         size_group.setStyleSheet(color_group.styleSheet())
         size_layout = QVBoxLayout(size_group)
+        size_layout.setSpacing(10)
         
         size_label = QLabel("Adjust circle size:")
+        size_label.setStyleSheet("color: #c0c0d0;")
         size_layout.addWidget(size_label)
         
         # 尺寸滑块
@@ -216,9 +255,33 @@ class MainWindow(QMainWindow):
         size_slider.setTickPosition(QSlider.TickPosition.TicksBelow)
         size_slider.setTickInterval(10)
         size_slider.valueChanged.connect(self.adjustCircleSize)
+        size_slider.setStyleSheet("""
+            QSlider::groove:horizontal {
+                border: 1px solid #3a3a4a;
+                height: 8px;
+                background: #404050;
+                border-radius: 4px;
+            }
+            QSlider::handle:horizontal {
+                background: #a0a0c0;
+                border: 1px solid #5a5a6a;
+                width: 18px;
+                margin: -4px 0;
+                border-radius: 9px;
+            }
+            QSlider::handle:horizontal:hover {
+                background: #b0b0d0;
+                border: 1px solid #7a7a8a;
+            }
+            QSlider::sub-page:horizontal {
+                background: #6a6a8a;
+                border-radius: 4px;
+            }
+        """)
         size_layout.addWidget(size_slider)
         
         self.size_value_label = QLabel("Size: 100%")
+        self.size_value_label.setStyleSheet("font-weight: bold; color: #d0d0ff;")
         size_layout.addWidget(self.size_value_label)
         
         control_layout.addWidget(size_group)
@@ -232,22 +295,31 @@ class MainWindow(QMainWindow):
         info_layout = QVBoxLayout(info_group)
         
         info_label = QLabel(
-            "This demo shows an OpenGL 4.3 core profile circle rendered using PyQt6.\n\n"
-            "Features:\n"
-            "- Modern OpenGL pipeline\n"
-            "- GLSL 430 shaders\n"
-            "- Vertex Buffer Object (VBO)\n"
+            "<b>OpenGL Circle Demo</b><br><br>"
+            "This demo shows an OpenGL 4.3 core profile circle rendered using PyQt6.<br><br>"
+            "<b>Features:</b><br>"
+            "- Modern OpenGL pipeline<br>"
+            "- GLSL 430 shaders<br>"
+            "- Vertex Buffer Object (VBO)<br>"
             "- Interactive controls"
         )
+        info_label.setStyleSheet("color: #c0c0d0;")
         info_label.setWordWrap(True)
         info_layout.addWidget(info_label)
         
         control_layout.addWidget(info_group)
         
+        # 添加应用信息
+        footer_label = QLabel("© 2023 OpenGL PyQt6 Demo | Dark Theme")
+        footer_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        footer_label.setStyleSheet("color: #9090a0; font-size: 10px; margin-top: 10px;")
+        control_layout.addWidget(footer_label)
+        
         main_layout.addWidget(control_panel, 1)  # 控制面板占据1/4空间
 
     def chooseCustomColor(self):
-        color = QColorDialog.getColor()
+        # 使用深色主题的颜色对话框
+        color = QColorDialog.getColor(options=QColorDialog.ColorDialogOption.DontUseNativeDialog)
         if color.isValid():
             r = color.red() / 255.0
             g = color.green() / 255.0
@@ -255,9 +327,6 @@ class MainWindow(QMainWindow):
             self.canvas.setCircleColor(r, g, b)
 
     def adjustCircleSize(self, value):
-        # 这里只是示例，实际需要修改OpenGL渲染逻辑
-        # 在您的原始实现中，圆的大小是固定的
-        # 如果需要实现尺寸调整，需要修改顶点数据或使用变换矩阵
         self.size_value_label.setText(f"Size: {value}%")
         # 提示用户需要进一步实现
         print(f"Circle size adjusted to {value}% (implementation required)")
@@ -266,8 +335,13 @@ class MainWindow(QMainWindow):
 if __name__ == "__main__":
     app = QApplication(sys.argv)
     
-    # 设置应用样式
+    # 设置深色主题
     app.setStyle("Fusion")
+    app.setPalette(MainWindow().palette())  # 应用深色调色板
+    
+    # 设置应用字体
+    font = QFont("Segoe UI", 10)
+    app.setFont(font)
     
     window = MainWindow()
     window.show()

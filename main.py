@@ -16,7 +16,7 @@ class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("OpenGL Demo - Dark Theme")
-        self.setGeometry(100, 100, 1000, 750)
+        self.setGeometry(100, 100, 2480, 1200)
         
         # 检查着色器文件是否存在
         self.checkShaderFiles()

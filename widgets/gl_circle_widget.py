@@ -12,9 +12,8 @@ class GLCircleWidget(QOpenGLWidget):
         self.program = None
         self.vbo = None
         self.circleColor = [1.0, 0.0, 0.0]  # 默认红色
-        self.scale_x = 1.0
-        self.scale_y = 1.0
-        self.size_factor = 1.0  # 用于控制圆的大小
+        self.offset = [0.2, 0.2]  # 默认偏移
+        self.radius = 0.2  # 默认半径
 
     def loadShaderFromFile(self, shader_type, file_path):
         """从文件加载着色器"""
@@ -62,16 +61,22 @@ class GLCircleWidget(QOpenGLWidget):
         else:
             raise RuntimeError("Shader loading failed")
             
-        # 生成圆形顶点数据
-        self.generateCircleVertices(0.5)  # 初始半径为0.5
+        # 生成全屏矩形顶点数据
+        self.generateScreenQuad()
 
-    def generateCircleVertices(self, radius):
-        # 生成圆形顶点数据
-        vertices = [0.0, 0.0]  # 圆心
-        for i in range(361):  # 360度+闭合点
-            angle = math.radians(i)
-            vertices.extend([radius * math.cos(angle), radius * math.sin(angle)])
-
+    def generateScreenQuad(self):
+        """生成覆盖整个视口的矩形顶点数据"""
+        # 全屏矩形顶点数据（两个三角形组成）
+        vertices = [
+            -1.0, -1.0,  # 左下
+             1.0, -1.0,  # 右下
+             1.0,  1.0,  # 右上
+             
+            -1.0, -1.0,  # 左下
+             1.0,  1.0,  # 右上
+            -1.0,  1.0   # 左上
+        ]
+        
         # 创建或更新VBO
         if not self.vbo:
             self.vbo = gl.glGenBuffers(1)
@@ -85,44 +90,47 @@ class GLCircleWidget(QOpenGLWidget):
         if not self.program or not self.vbo:
             return
 
-        # 计算当前缩放比例
-        width = self.width()
-        height = self.height()
-        
-        # 确保圆形始终是正圆
-        if width > height:
-            self.scale_x = height / width
-            self.scale_y = 1.0
-        else:
-            self.scale_x = 1.0
-            self.scale_y = width / height
-
+        # 清除背景
         gl.glClearColor(0.1, 0.1, 0.1, 1.0)
         gl.glClear(gl.GL_COLOR_BUFFER_BIT)
 
+        # 使用着色器程序
         self.program.bind()
-        self.program.setUniformValue("circleColor", *self.circleColor)
-        self.program.setUniformValue("scale_x", self.scale_x)
-        self.program.setUniformValue("scale_y", self.scale_y)
         
+        # 设置统一变量
+        self.program.setUniformValue("circleColor", *self.circleColor)
+        self.program.setUniformValue("iResolution", self.width(), self.height())
+        self.program.setUniformValue("offset", *self.offset)
+        self.program.setUniformValue("radius", self.radius)
+        
+        # 绑定顶点缓冲区
         gl.glBindBuffer(gl.GL_ARRAY_BUFFER, self.vbo)
         gl.glEnableVertexAttribArray(0)
         gl.glVertexAttribPointer(0, 2, gl.GL_FLOAT, False, 0, None)
         
-        gl.glDrawArrays(gl.GL_TRIANGLE_FAN, 0, 362)  # 361顶点+圆心
+        # 绘制两个三角形（6个顶点）
+        gl.glDrawArrays(gl.GL_TRIANGLES, 0, 6)
+        
+        # 释放着色器程序
         self.program.release()
         
     def resizeGL(self, w, h):
+        # 设置视口大小
         gl.glViewport(0, 0, w, h)
-        self.update()  # 触发重绘
+        # 触发重绘以更新宽高比
+        self.update()
         
     def setCircleColor(self, r, g, b):
+        """设置圆形颜色"""
         self.circleColor = [r, g, b]
         self.update()
         
-    def setCircleSize(self, size_percent):
-        """设置圆的大小（百分比）"""
-        self.size_factor = size_percent / 100.0
-        # 重新生成顶点数据（根据新的大小）
-        self.generateCircleVertices(0.5 * self.size_factor)
+    def setCircleOffset(self, x, y):
+        """设置圆形偏移位置"""
+        self.offset = [x, y]
+        self.update()
+        
+    def setCircleRadius(self, radius):
+        """设置圆形半径"""
+        self.radius = radius
         self.update()

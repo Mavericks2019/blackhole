@@ -2,6 +2,7 @@ from PyQt6.QtWidgets import (QFrame, QVBoxLayout, QGroupBox, QPushButton,
                             QSlider, QLabel, QVBoxLayout, QHBoxLayout)
 from PyQt6.QtGui import QColor
 from PyQt6.QtCore import Qt
+from PyQt6.QtCore import pyqtSignal
 
 class ControlPanel(QFrame):
     def __init__(self, parent=None):
@@ -55,27 +56,63 @@ class ControlPanel(QFrame):
         
         control_layout.addWidget(self.color_group)
         
-        # 尺寸控制部分
-        self.size_group = QGroupBox("Circle Size")
-        size_layout = QVBoxLayout(self.size_group)
-        size_layout.setSpacing(10)
+        # 偏移控制部分
+        self.offset_group = QGroupBox("Circle Offset")
+        offset_layout = QVBoxLayout(self.offset_group)
+        offset_layout.setSpacing(10)
         
-        size_label = QLabel("Adjust circle size:")
-        size_layout.addWidget(size_label)
+        # X偏移
+        x_layout = QHBoxLayout()
+        x_label = QLabel("X Offset:")
+        x_layout.addWidget(x_label)
+        self.x_slider = QSlider(Qt.Orientation.Horizontal)
+        self.x_slider.setRange(-100, 100)
+        self.x_slider.setValue(20)  # 默认0.2
+        self.x_slider.setTickPosition(QSlider.TickPosition.TicksBelow)
+        self.x_slider.setTickInterval(10)
+        self.x_slider.valueChanged.connect(self.onOffsetChanged)
+        x_layout.addWidget(self.x_slider)
+        self.x_value_label = QLabel("0.20")
+        x_layout.addWidget(self.x_value_label)
+        offset_layout.addLayout(x_layout)
         
-        # 尺寸滑块
-        self.size_slider = QSlider(Qt.Orientation.Horizontal)
-        self.size_slider.setRange(1, 200)
-        self.size_slider.setValue(100)
-        self.size_slider.setTickPosition(QSlider.TickPosition.TicksBelow)
-        self.size_slider.setTickInterval(10)
-        self.size_slider.valueChanged.connect(self.onSizeChanged)
-        size_layout.addWidget(self.size_slider)
+        # Y偏移
+        y_layout = QHBoxLayout()
+        y_label = QLabel("Y Offset:")
+        y_layout.addWidget(y_label)
+        self.y_slider = QSlider(Qt.Orientation.Horizontal)
+        self.y_slider.setRange(-100, 100)
+        self.y_slider.setValue(20)  # 默认0.2
+        self.y_slider.setTickPosition(QSlider.TickPosition.TicksBelow)
+        self.y_slider.setTickInterval(10)
+        self.y_slider.valueChanged.connect(self.onOffsetChanged)
+        y_layout.addWidget(self.y_slider)
+        self.y_value_label = QLabel("0.20")
+        y_layout.addWidget(self.y_value_label)
+        offset_layout.addLayout(y_layout)
         
-        self.size_value_label = QLabel("Size: 100%")
-        size_layout.addWidget(self.size_value_label)
+        control_layout.addWidget(self.offset_group)
         
-        control_layout.addWidget(self.size_group)
+        # 半径控制部分
+        self.radius_group = QGroupBox("Circle Radius")
+        radius_layout = QVBoxLayout(self.radius_group)
+        radius_layout.setSpacing(10)
+        
+        radius_label = QLabel("Radius:")
+        radius_layout.addWidget(radius_label)
+        
+        self.radius_slider = QSlider(Qt.Orientation.Horizontal)
+        self.radius_slider.setRange(1, 100)
+        self.radius_slider.setValue(20)  # 默认0.2
+        self.radius_slider.setTickPosition(QSlider.TickPosition.TicksBelow)
+        self.radius_slider.setTickInterval(5)
+        self.radius_slider.valueChanged.connect(self.onRadiusChanged)
+        radius_layout.addWidget(self.radius_slider)
+        
+        self.radius_value_label = QLabel("0.20")
+        radius_layout.addWidget(self.radius_value_label)
+        
+        control_layout.addWidget(self.radius_group)
         
         # 宽高比信息
         self.ratio_group = QGroupBox("Aspect Ratio")
@@ -118,40 +155,39 @@ class ControlPanel(QFrame):
         self.footer_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         control_layout.addWidget(self.footer_label)
         
-    def setAspectRatio(self, ratio):
-        # 计算宽高比并显示
-        width = self.parent().canvas.width() if self.parent() else 1
-        height = self.parent().canvas.height() if self.parent() else 1
+    def setAspectRatio(self, ratio_text):
+        """设置宽高比显示文本"""
+        self.ratio_label.setText(ratio_text)
         
-        if width > height:
-            aspect = width / height
-            self.ratio_label.setText(f"Current: {aspect:.2f} : 1")
-        else:
-            aspect = height / width
-            self.ratio_label.setText(f"Current: 1 : {aspect:.2f}")
+    def onOffsetChanged(self):
+        """偏移改变时处理"""
+        x = self.x_slider.value() / 100.0
+        y = self.y_slider.value() / 100.0
         
-    def setSizeValue(self, value):
-        self.size_value_label.setText(f"Size: {value}%")
+        # 更新标签显示
+        self.x_value_label.setText(f"{x:.2f}")
+        self.y_value_label.setText(f"{y:.2f}")
         
-    def onSizeChanged(self, value):
-        self.setSizeValue(value)
-        self.sizeChanged.emit(value)
+        # 发出信号
+        self.offsetChanged.emit(x, y)
+        
+    def onRadiusChanged(self, value):
+        """半径改变时处理"""
+        radius = value / 100.0
+        self.radius_value_label.setText(f"{radius:.2f}")
+        self.radiusChanged.emit(radius)
         
     def customColorRequested(self):
         self.customColorClicked.emit()
 
 # 为控件面板添加信号
-from PyQt6.QtCore import pyqtSignal
-
 class ControlPanelSignals(ControlPanel):
     colorSelected = pyqtSignal(float, float, float)
     customColorClicked = pyqtSignal()
-    sizeChanged = pyqtSignal(int)
-    requestAspectRatioUpdate = pyqtSignal()  # 新增信号，请求更新宽高比
+    offsetChanged = pyqtSignal(float, float)  # 添加偏移信号
+    radiusChanged = pyqtSignal(float)  # 添加半径信号
+    requestAspectRatioUpdate = pyqtSignal()  # 请求更新宽高比
 
 # 合并信号类
-# 合并信号类
 class ControlPanel(ControlPanelSignals):
-    def setAspectRatio(self, ratio_text):
-        """设置宽高比显示文本"""
-        self.ratio_label.setText(ratio_text)
+    pass

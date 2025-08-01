@@ -1,22 +1,22 @@
 import sys
 import os
-from PyQt6.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout, 
-                             QHBoxLayout, QColorDialog, QLabel, QFrame, 
-                             QGroupBox, QTabWidget, QStackedWidget, QMessageBox,QPushButton)
+from PyQt6.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout, QSlider,
+                             QHBoxLayout, QColorDialog, QLabel, QFrame, QPushButton,
+                             QGroupBox, QTabWidget, QStackedWidget, QMessageBox)
 from PyQt6.QtGui import QPalette, QColor, QFont
 from PyQt6.QtCore import Qt
 
 # 从其他文件导入组件
 from widgets.gl_circle_widget import GLCircleWidget
+from widgets.gl_basic_widget import GLBasicWidget  # 导入基本功能演示的OpenGL组件
 from tabs.control_panel import ControlPanel
-from widgets.gl_basic_widget import GLBasicWidget
-from tabs.basic_control_panel import BasicControlPanel
+from tabs.basic_control_panel import BasicControlPanel  # 导入基本功能演示的控制面板
 
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("OpenGL Demo - Dark Theme")
-        self.setGeometry(100, 100, 2480, 1200)
+        self.setGeometry(100, 100, 2400, 1800)
         
         # 检查着色器文件是否存在
         self.checkShaderFiles()
@@ -81,7 +81,7 @@ class MainWindow(QMainWindow):
         circle_layout = QVBoxLayout(circle_tab)
         self.circle_canvas = GLCircleWidget()
         circle_layout.addWidget(self.circle_canvas)
-        self.tab_widget.addTab(circle_tab, "Circle Demo")
+        self.tab_widget.addTab(circle_tab, "SDF Circle Demo")
         
         # 创建基本功能演示标签页
         basic_tab = QWidget()
@@ -194,7 +194,7 @@ class MainWindow(QMainWindow):
             
             # 特定组内标签样式
             for label in group.findChildren(QLabel):
-                if "Size:" in label.text() or "Current:" in label.text():
+                if "Size:" in label.text() or "Current:" in label.text() or "Radius:" in label.text() or "Offset:" in label.text():
                     label.setStyleSheet("font-weight: bold; color: #d0d0ff;")
                 else:
                     label.setStyleSheet("color: #c0c0d0;")
@@ -253,8 +253,8 @@ class MainWindow(QMainWindow):
             }
         """)
         
-        # 滑块样式
-        self.circle_control.size_slider.setStyleSheet("""
+        # 滑块样式（应用于所有滑块）
+        slider_style = """
             QSlider::groove:horizontal {
                 border: 1px solid #3a3a4a;
                 height: 8px;
@@ -276,7 +276,11 @@ class MainWindow(QMainWindow):
                 background: #6a6a8a;
                 border-radius: 4px;
             }
-        """)
+        """
+        
+        # 应用滑块样式
+        for slider in self.circle_control.findChildren(QSlider):
+            slider.setStyleSheet(slider_style)
         
         # 信息标签样式
         info_group = self.circle_control.findChild(QGroupBox, "info_group")
@@ -364,7 +368,8 @@ class MainWindow(QMainWindow):
         # 圆形演示信号
         self.circle_control.colorSelected.connect(self.circle_canvas.setCircleColor)
         self.circle_control.customColorClicked.connect(self.chooseCustomColor)
-        self.circle_control.sizeChanged.connect(self.adjustCircleSize)
+        self.circle_control.offsetChanged.connect(self.circle_canvas.setCircleOffset)
+        self.circle_control.radiusChanged.connect(self.circle_canvas.setCircleRadius)
         self.circle_control.requestAspectRatioUpdate.connect(self.updateAspectRatio)
         
         # 基本功能信号
@@ -397,6 +402,7 @@ class MainWindow(QMainWindow):
         self.circle_control.setAspectRatio(ratio_text)
 
     def chooseCustomColor(self):
+        """打开颜色对话框选择自定义颜色"""
         # 使用深色主题的颜色对话框
         color = QColorDialog.getColor(options=QColorDialog.ColorDialogOption.DontUseNativeDialog)
         if color.isValid():
@@ -405,11 +411,8 @@ class MainWindow(QMainWindow):
             b = color.blue() / 255.0
             self.circle_canvas.setCircleColor(r, g, b)
 
-    def adjustCircleSize(self, value):
-        self.circle_control.setSizeValue(value)
-        self.circle_canvas.setCircleSize(value)
-        
     def resizeEvent(self, event):
+        """窗口大小改变事件"""
         super().resizeEvent(event)
         # 仅在圆形演示标签激活时更新宽高比
         if self.tab_widget.currentIndex() == 0:

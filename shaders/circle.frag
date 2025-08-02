@@ -49,8 +49,8 @@ void main() {
     float Rs = calculateRs(MBlackHole);
     
     // 设置相机位置和黑洞位置
-    vec3 cameraPos = vec3(0.0, 0.0, 5.0 * Rs);
-    vec3 blackHolePos = vec3(0.0, 0.0, 0.0);
+    vec3 cameraPos = vec3(0.0, 0.0, 10.0*Rs);
+    vec3 blackHolePos = vec3(0.0, 0.0, 5.0 * Rs);
     
     // 计算UV坐标 [-1.0, 1.0] 范围
     vec2 uv = (2.0 * gl_FragCoord.xy - iResolution.xy) / min(iResolution.x, iResolution.y);

@@ -15,7 +15,7 @@ class ControlPanel(QFrame):
         control_layout.setContentsMargins(15, 15, 15, 15)
         
         # 标题标签
-        title_label = QLabel("OpenGL Circle Controls")
+        title_label = QLabel("OpenGL Black Hole Controls")
         title_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         control_layout.addWidget(title_label)
         
@@ -25,8 +25,8 @@ class ControlPanel(QFrame):
         separator.setFrameShadow(QFrame.Shadow.Sunken)
         control_layout.addWidget(separator)
         
-        # 颜色控制部分 - 只保留一个自定义颜色按钮
-        self.color_group = QGroupBox("Circle Color")
+        # 颜色控制部分
+        self.color_group = QGroupBox("Accretion Disk Color")
         color_layout = QVBoxLayout(self.color_group)
         color_layout.setSpacing(8)
         
@@ -37,8 +37,29 @@ class ControlPanel(QFrame):
         
         control_layout.addWidget(self.color_group)
         
+        # 黑洞质量控制部分
+        self.mass_group = QGroupBox("Black Hole Mass (Solar Masses)")
+        mass_layout = QVBoxLayout(self.mass_group)
+        mass_layout.setSpacing(10)
+        
+        mass_label = QLabel("Mass (×10⁶ M☉):")
+        mass_layout.addWidget(mass_label)
+        
+        self.mass_slider = QSlider(Qt.Orientation.Horizontal)
+        self.mass_slider.setRange(10, 1000)  # 0.1亿到10亿太阳质量
+        self.mass_slider.setValue(149)       # 默认1.49e7 (1.49 × 10^7)
+        self.mass_slider.setTickPosition(QSlider.TickPosition.TicksBelow)
+        self.mass_slider.setTickInterval(100)
+        self.mass_slider.valueChanged.connect(self.onMassChanged)
+        mass_layout.addWidget(self.mass_slider)
+        
+        self.mass_value_label = QLabel("1.49 × 10⁷")
+        mass_layout.addWidget(self.mass_value_label)
+        
+        control_layout.addWidget(self.mass_group)
+        
         # 偏移控制部分
-        self.offset_group = QGroupBox("Circle Offset")
+        self.offset_group = QGroupBox("Disk Offset")
         offset_layout = QVBoxLayout(self.offset_group)
         offset_layout.setSpacing(10)
         
@@ -75,7 +96,7 @@ class ControlPanel(QFrame):
         control_layout.addWidget(self.offset_group)
         
         # 半径控制部分
-        self.radius_group = QGroupBox("Circle Radius")
+        self.radius_group = QGroupBox("Disk Radius")
         radius_layout = QVBoxLayout(self.radius_group)
         radius_layout.setSpacing(10)
         
@@ -117,13 +138,13 @@ class ControlPanel(QFrame):
         info_layout = QVBoxLayout(self.info_group)
         
         info_label = QLabel(
-            "<b>OpenGL Circle Demo</b><br><br>"
-            "This demo shows an OpenGL 4.3 core profile circle rendered using PyQt6.<br><br>"
+            "<b>Black Hole Visualization</b><br><br>"
+            "This demo simulates a black hole using OpenGL 4.3 core profile.<br><br>"
             "<b>Features:</b><br>"
-            "- Modern OpenGL pipeline<br>"
+            "- MSAA 4x anti-aliasing<br>"
             "- GLSL 430 shaders<br>"
-            "- Vertex Buffer Object (VBO)<br>"
-            "- Aspect ratio correction<br>"
+            "- Realistic Schwarzschild radius calculation<br>"
+            "- Adjustable black hole mass<br>"
             "- Interactive controls"
         )
         info_label.setWordWrap(True)
@@ -132,7 +153,7 @@ class ControlPanel(QFrame):
         control_layout.addWidget(self.info_group)
         
         # 添加应用信息
-        self.footer_label = QLabel("© 2023 OpenGL PyQt6 Demo | Dark Theme")
+        self.footer_label = QLabel("© 2023 OpenGL PyQt6 Demo | Dark Theme | MSAA Enabled")
         self.footer_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         control_layout.addWidget(self.footer_label)
         
@@ -158,16 +179,31 @@ class ControlPanel(QFrame):
         self.radius_value_label.setText(f"{radius:.2f}")
         self.radiusChanged.emit(radius)
         
+    def onMassChanged(self, value):
+        """质量改变时处理"""
+        mass = value * 1e5  # 转换为太阳质量单位 (10^5 * value)
+        # 格式化显示为科学计数法
+        if mass >= 1e6:
+            exponent = 6
+            base = mass / 1e6
+            self.mass_value_label.setText(f"{base:.2f} × 10⁶")
+        else:
+            exponent = 5
+            base = mass / 1e5
+            self.mass_value_label.setText(f"{base:.2f} × 10⁵")
+        self.massChanged.emit(mass)
+        
     def customColorRequested(self):
         self.customColorClicked.emit()
 
 # 为控件面板添加信号
 class ControlPanelSignals(ControlPanel):
-    colorSelected = pyqtSignal(float, float, float)  # 保留此信号，但不再使用
+    colorSelected = pyqtSignal(float, float, float)
     customColorClicked = pyqtSignal()
-    offsetChanged = pyqtSignal(float, float)  # 添加偏移信号
-    radiusChanged = pyqtSignal(float)  # 添加半径信号
-    requestAspectRatioUpdate = pyqtSignal()  # 请求更新宽高比
+    offsetChanged = pyqtSignal(float, float)
+    radiusChanged = pyqtSignal(float)
+    requestAspectRatioUpdate = pyqtSignal()
+    massChanged = pyqtSignal(float)  # 添加质量信号
 
 # 合并信号类
 class ControlPanel(ControlPanelSignals):

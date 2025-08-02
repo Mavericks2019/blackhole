@@ -3,17 +3,28 @@ import os
 from PyQt6.QtOpenGLWidgets import QOpenGLWidget
 from PyQt6.QtOpenGL import QOpenGLShaderProgram, QOpenGLShader
 from PyQt6.QtCore import Qt, QFile, QTextStream
+from PyQt6.QtGui import QSurfaceFormat
 from OpenGL import GL as gl
 
 class GLCircleWidget(QOpenGLWidget):
     def __init__(self):
         super().__init__()
         self.setMinimumSize(600, 600)
+        
+        # 配置MSAA抗锯齿
+        fmt = QSurfaceFormat()
+        fmt.setSamples(4)  # 4倍多重采样
+        fmt.setVersion(4, 3)
+        fmt.setProfile(QSurfaceFormat.OpenGLContextProfile.CoreProfile)
+        self.setFormat(fmt)
+        
         self.program = None
+        self.vao = None  # 添加顶点数组对象(VAO)
         self.vbo = None
         self.circleColor = [1.0, 0.0, 0.0]  # 默认红色
         self.offset = [0.2, 0.2]  # 默认偏移
         self.radius = 0.2  # 默认半径
+        self.blackHoleMass = 1.49e7  # 默认黑洞质量 (太阳质量单位)
 
     def loadShaderFromFile(self, shader_type, file_path):
         """从文件加载着色器"""
@@ -35,7 +46,7 @@ class GLCircleWidget(QOpenGLWidget):
         return None
 
     def initializeGL(self):
-        # 配置OpenGL 4.3核心模式
+        # 配置OpenGL 4.3核心模式 (已经在构造函数中设置过，这里确保)
         fmt = self.format()
         fmt.setVersion(4, 3)
         fmt.setProfile(fmt.OpenGLContextProfile.CoreProfile)
@@ -61,8 +72,15 @@ class GLCircleWidget(QOpenGLWidget):
         else:
             raise RuntimeError("Shader loading failed")
             
+        # 生成VAO和VBO
+        self.vao = gl.glGenVertexArrays(1)
+        gl.glBindVertexArray(self.vao)
+        
         # 生成全屏矩形顶点数据
         self.generateScreenQuad()
+        
+        # 解绑VAO
+        gl.glBindVertexArray(0)
 
     def generateScreenQuad(self):
         """生成覆盖整个视口的矩形顶点数据"""
@@ -85,14 +103,18 @@ class GLCircleWidget(QOpenGLWidget):
         gl.glBufferData(gl.GL_ARRAY_BUFFER, 
                        (gl.GLfloat * len(vertices))(*vertices),
                        gl.GL_STATIC_DRAW)
+        
+        # 设置顶点属性指针
+        gl.glEnableVertexAttribArray(0)
+        gl.glVertexAttribPointer(0, 2, gl.GL_FLOAT, False, 0, None)
 
     def paintGL(self):
-        if not self.program or not self.vbo:
+        if not self.program or not self.vao or not self.vbo:
             return
 
         # 清除背景
         gl.glClearColor(0.1, 0.1, 0.1, 1.0)
-        gl.glClear(gl.GL_COLOR_BUFFER_BIT)
+        gl.glClear(gl.GL_COLOR_BUFFER_BIT | gl.GL_DEPTH_BUFFER_BIT)
 
         # 使用着色器程序
         self.program.bind()
@@ -102,14 +124,16 @@ class GLCircleWidget(QOpenGLWidget):
         self.program.setUniformValue("iResolution", self.width(), self.height())
         self.program.setUniformValue("offset", *self.offset)
         self.program.setUniformValue("radius", self.radius)
+        self.program.setUniformValue("MBlackHole", self.blackHoleMass)  # 传递黑洞质量
         
-        # 绑定顶点缓冲区
-        gl.glBindBuffer(gl.GL_ARRAY_BUFFER, self.vbo)
-        gl.glEnableVertexAttribArray(0)
-        gl.glVertexAttribPointer(0, 2, gl.GL_FLOAT, False, 0, None)
+        # 绑定VAO
+        gl.glBindVertexArray(self.vao)
         
         # 绘制两个三角形（6个顶点）
         gl.glDrawArrays(gl.GL_TRIANGLES, 0, 6)
+        
+        # 解绑VAO
+        gl.glBindVertexArray(0)
         
         # 释放着色器程序
         self.program.release()
@@ -133,4 +157,9 @@ class GLCircleWidget(QOpenGLWidget):
     def setCircleRadius(self, radius):
         """设置圆形半径"""
         self.radius = radius
+        self.update()
+        
+    def setBlackHoleMass(self, mass):
+        """设置黑洞质量（太阳质量单位）"""
+        self.blackHoleMass = mass
         self.update()

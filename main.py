@@ -81,7 +81,7 @@ class MainWindow(QMainWindow):
         circle_layout = QVBoxLayout(circle_tab)
         self.circle_canvas = GLCircleWidget()
         circle_layout.addWidget(self.circle_canvas)
-        self.tab_widget.addTab(circle_tab, "SDF Circle Demo")
+        self.tab_widget.addTab(circle_tab, "Black Hole Demo")
         
         # 创建基本功能演示标签页
         basic_tab = QWidget()
@@ -194,7 +194,7 @@ class MainWindow(QMainWindow):
             
             # 特定组内标签样式
             for label in group.findChildren(QLabel):
-                if "Size:" in label.text() or "Current:" in label.text() or "Radius:" in label.text() or "Offset:" in label.text():
+                if "Size:" in label.text() or "Current:" in label.text() or "Radius:" in label.text() or "Offset:" in label.text() or "Mass" in label.text():
                     label.setStyleSheet("font-weight: bold; color: #d0d0ff;")
                 else:
                     label.setStyleSheet("color: #c0c0d0;")
@@ -256,6 +256,9 @@ class MainWindow(QMainWindow):
         
         # 页脚样式
         self.circle_control.footer_label.setStyleSheet("color: #9090a0; font-size: 10px; margin-top: 10px;")
+        
+        # 质量值标签样式
+        self.circle_control.mass_value_label.setStyleSheet("font-weight: bold; color: #d0d0ff;")
 
     def applyBasicControlStyles(self):
         """应用基本功能控制面板的样式"""
@@ -336,6 +339,7 @@ class MainWindow(QMainWindow):
         self.circle_control.offsetChanged.connect(self.circle_canvas.setCircleOffset)
         self.circle_control.radiusChanged.connect(self.circle_canvas.setCircleRadius)
         self.circle_control.requestAspectRatioUpdate.connect(self.updateAspectRatio)
+        self.circle_control.massChanged.connect(self.circle_canvas.setBlackHoleMass)  # 新增连接
         
         # 基本功能信号
         self.basic_control.rotateRequested.connect(self.basic_canvas.rotateTriangle)

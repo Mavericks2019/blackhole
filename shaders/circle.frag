@@ -50,7 +50,7 @@ void main() {
     
     // 设置相机位置和黑洞位置
     vec3 cameraPos = vec3(0.0, 0.0, 0.0);
-    vec3 blackHolePos = vec3(offset, 5.0 * Rs);  // 使用传入的偏移参数
+    vec3 blackHolePos = vec3(0.0, 0.0, 5.0 * Rs);  // 使用传入的偏移参数
     
     // 计算UV坐标 [-1.0, 1.0] 范围
     vec2 uv = (2.0 * gl_FragCoord.xy - iResolution.xy) / min(iResolution.x, iResolution.y);
@@ -80,17 +80,4 @@ void main() {
         // 最终颜色
         fragColor = vec4(diffuse + ambient, 1.0);
     } 
-    // else {
-    //     // 背景色 - 深空
-    //     vec3 bgColor = vec3(0.05, 0.02, 0.03);
-        
-    //     // 添加一些星星
-    //     float stars = 0.0;
-    //     // 使用随机数函数生成星星
-    //     if (rand(uv) > 0.99) {
-    //         stars = pow(rand(uv * 2.0), 8.0); // 更亮的星星
-    //     }
-        
-    //     fragColor = vec4(bgColor + vec3(stars), 1.0);
-    // }
 }

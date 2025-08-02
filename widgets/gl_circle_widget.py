@@ -3,7 +3,7 @@ import os
 from PyQt6.QtOpenGLWidgets import QOpenGLWidget
 from PyQt6.QtOpenGL import QOpenGLShaderProgram, QOpenGLShader
 from PyQt6.QtCore import Qt, QFile, QTextStream
-from PyQt6.QtGui import QSurfaceFormat
+from PyQt6.QtGui import QSurfaceFormat, QVector3D
 from OpenGL import GL as gl
 
 class GLCircleWidget(QOpenGLWidget):
@@ -25,6 +25,12 @@ class GLCircleWidget(QOpenGLWidget):
         self.offset = [0.2, 0.2]  # 默认偏移
         self.radius = 0.2  # 默认半径
         self.blackHoleMass = 1.49e7  # 默认黑洞质量 (太阳质量单位)
+        
+        # 添加相机控制参数
+        self.cameraDistance = 10.0  # 相机到原点的距离
+        self.cameraRotationX = 0.0  # 绕X轴的旋转角度（弧度）
+        self.cameraRotationY = 0.0  # 绕Y轴的旋转角度（弧度）
+        self.lastMousePos = None  # 记录上一次鼠标位置
 
     def loadShaderFromFile(self, shader_type, file_path):
         """从文件加载着色器"""
@@ -119,12 +125,22 @@ class GLCircleWidget(QOpenGLWidget):
         # 使用着色器程序
         self.program.bind()
         
+        # 计算相机位置
+        cameraPos = QVector3D(
+            self.cameraDistance * math.sin(self.cameraRotationY) * math.cos(self.cameraRotationX),
+            self.cameraDistance * math.sin(self.cameraRotationX),
+            self.cameraDistance * math.cos(self.cameraRotationY) * math.cos(self.cameraRotationX)
+        )
+        
         # 设置统一变量
         self.program.setUniformValue("circleColor", *self.circleColor)
         self.program.setUniformValue("iResolution", self.width(), self.height())
         self.program.setUniformValue("offset", *self.offset)
         self.program.setUniformValue("radius", self.radius)
         self.program.setUniformValue("MBlackHole", self.blackHoleMass)  # 传递黑洞质量
+        self.program.setUniformValue("cameraPos", cameraPos)  # 传递相机位置
+        self.program.setUniformValue("cameraRotationX", self.cameraRotationX)
+        self.program.setUniformValue("cameraRotationY", self.cameraRotationY)
         
         # 绑定VAO
         gl.glBindVertexArray(self.vao)
@@ -162,4 +178,36 @@ class GLCircleWidget(QOpenGLWidget):
     def setBlackHoleMass(self, mass):
         """设置黑洞质量（太阳质量单位）"""
         self.blackHoleMass = mass
+        self.update()
+        
+    # 添加鼠标事件处理
+    def mousePressEvent(self, event):
+        if event.button() == Qt.MouseButton.LeftButton:
+            self.lastMousePos = event.position()
+            
+    def mouseMoveEvent(self, event):
+        if self.lastMousePos is not None and event.buttons() & Qt.MouseButton.LeftButton:
+            # 计算鼠标移动距离
+            currentPos = event.position()
+            dx = currentPos.x() - self.lastMousePos.x()
+            dy = currentPos.y() - self.lastMousePos.y()
+            
+            # 更新旋转角度
+            self.cameraRotationY += dx * 0.01
+            self.cameraRotationX += dy * 0.01
+            
+            # 限制X轴旋转角度在[-π/2, π/2]之间，避免翻转
+            self.cameraRotationX = max(-math.pi/2, min(math.pi/2, self.cameraRotationX))
+            
+            self.lastMousePos = currentPos
+            self.update()  # 触发重绘
+            
+    def mouseReleaseEvent(self, event):
+        if event.button() == Qt.MouseButton.LeftButton:
+            self.lastMousePos = None
+            
+    def wheelEvent(self, event):
+        # 滚轮控制相机距离
+        delta = event.angleDelta().y() / 120.0  # 获取滚轮变化量
+        self.cameraDistance = max(1.0, min(100.0, self.cameraDistance - delta * 0.5))
         self.update()

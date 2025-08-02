@@ -5,6 +5,9 @@ uniform vec2 iResolution;  // 视口分辨率
 uniform vec2 offset;       // 偏移参数
 uniform float radius;      // 半径参数
 uniform float MBlackHole;  // 黑洞质量（太阳质量单位）
+uniform vec3 cameraPos;    // 相机位置
+uniform float cameraRotationX; // 相机X轴旋转
+uniform float cameraRotationY; // 相机Y轴旋转
 
 // 物理常量
 const float kPi              = 3.141592653589;
@@ -44,12 +47,33 @@ float rand(vec2 co) {
     return fract(sin(dot(co.xy, vec2(12.9898, 78.233)) * 43758.5453));
 }
 
+// 计算旋转矩阵（绕X轴）
+mat3 rotationMatrixX(float angle) {
+    float c = cos(angle);
+    float s = sin(angle);
+    return mat3(
+        1.0, 0.0, 0.0,
+        0.0, c, -s,
+        0.0, s, c
+    );
+}
+
+// 计算旋转矩阵（绕Y轴）
+mat3 rotationMatrixY(float angle) {
+    float c = cos(angle);
+    float s = sin(angle);
+    return mat3(
+        c, 0.0, s,
+        0.0, 1.0, 0.0,
+        -s, 0.0, c
+    );
+}
+
 void main() {
     // 使用传入的黑洞质量参数
     float Rs = calculateRs(MBlackHole);
     
-    // 设置相机位置和黑洞位置
-    vec3 cameraPos = vec3(0.0, 0.0, 7.0 * Rs);
+    // 设置黑洞位置
     vec3 blackHolePos = vec3(offset, 5.0 * Rs);  // 使用传入的偏移参数
     
     // 计算UV坐标 [-1.0, 1.0] 范围
@@ -57,7 +81,12 @@ void main() {
     
     // 创建光线
     vec3 ro = cameraPos;  // 光线起点 (相机位置)
-    vec3 rd = normalize(vec3(uv, -1.0));  // 光线方向
+    
+    // 计算光线方向（应用旋转）
+    mat3 rotX = rotationMatrixX(cameraRotationX);
+    mat3 rotY = rotationMatrixY(cameraRotationY);
+    mat3 rotation = rotX * rotY;
+    vec3 rd = rotation * normalize(vec3(uv, -1.0));  // 旋转后的光线方向
     
     // 计算光线与球体的交点
     float t = raySphereIntersection(ro, rd, blackHolePos, Rs);
@@ -79,18 +108,17 @@ void main() {
         
         // 最终颜色
         fragColor = vec4(diffuse + ambient, 1.0);
-    } 
-    // else {
-    //     // 背景色 - 深空
-    //     vec3 bgColor = vec3(0.05, 0.02, 0.03);
+    } else {
+        // 背景色 - 深空
+        vec3 bgColor = vec3(0.05, 0.02, 0.03);
         
-    //     // 添加一些星星
-    //     float stars = 0.0;
-    //     // 使用随机数函数生成星星
-    //     if (rand(uv) > 0.99) {
-    //         stars = pow(rand(uv * 2.0), 8.0); // 更亮的星星
-    //     }
+        // 添加一些星星
+        float stars = 0.0;
+        // 使用随机数函数生成星星
+        if (rand(uv) > 0.99) {
+            stars = pow(rand(uv * 2.0), 8.0); // 更亮的星星
+        }
         
-    //     fragColor = vec4(bgColor + vec3(stars), 1.0);
-    // }
+        fragColor = vec4(bgColor + vec3(stars), 1.0);
+    }
 }

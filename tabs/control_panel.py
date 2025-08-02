@@ -25,29 +25,10 @@ class ControlPanel(QFrame):
         separator.setFrameShadow(QFrame.Shadow.Sunken)
         control_layout.addWidget(separator)
         
-        # 颜色控制部分
+        # 颜色控制部分 - 只保留一个自定义颜色按钮
         self.color_group = QGroupBox("Circle Color")
         color_layout = QVBoxLayout(self.color_group)
         color_layout.setSpacing(8)
-        
-        # 颜色按钮
-        self.color_buttons = {}
-        colors = [
-            ("Red", (1.0, 0.0, 0.0)),
-            ("Green", (0.0, 1.0, 0.0)),
-            ("Blue", (0.0, 0.0, 1.0)),
-            ("Yellow", (1.0, 1.0, 0.0)),
-            ("Purple", (0.6, 0.0, 0.8)),
-            ("Cyan", (0.0, 1.0, 1.0)),
-            ("White", (1.0, 1.0, 1.0)),
-            ("Orange", (1.0, 0.5, 0.0))
-        ]
-        
-        for name, color in colors:
-            btn = QPushButton(name)
-            self.color_buttons[name] = btn
-            btn.clicked.connect(lambda _, c=color: self.colorSelected.emit(*c))
-            color_layout.addWidget(btn)
         
         # 自定义颜色按钮
         self.custom_btn = QPushButton("Custom Color")
@@ -182,7 +163,7 @@ class ControlPanel(QFrame):
 
 # 为控件面板添加信号
 class ControlPanelSignals(ControlPanel):
-    colorSelected = pyqtSignal(float, float, float)
+    colorSelected = pyqtSignal(float, float, float)  # 保留此信号，但不再使用
     customColorClicked = pyqtSignal()
     offsetChanged = pyqtSignal(float, float)  # 添加偏移信号
     radiusChanged = pyqtSignal(float)  # 添加半径信号

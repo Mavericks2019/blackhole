@@ -199,40 +199,6 @@ class MainWindow(QMainWindow):
                 else:
                     label.setStyleSheet("color: #c0c0d0;")
         
-        # 按钮样式
-        colors = {
-            "Red": (1.0, 0.0, 0.0),
-            "Green": (0.0, 1.0, 0.0),
-            "Blue": (0.0, 0.0, 1.0),
-            "Yellow": (1.0, 1.0, 0.0),
-            "Purple": (0.6, 0.0, 0.8),
-            "Cyan": (0.0, 1.0, 1.0),
-            "White": (1.0, 1.0, 1.0),
-            "Orange": (1.0, 0.5, 0.0)
-        }
-        
-        for name, color in colors.items():
-            btn = self.circle_control.color_buttons.get(name)
-            if btn:
-                text_color = 'black' if (color[0]*0.299 + color[1]*0.587 + color[2]*0.114) > 0.7 else 'white'
-                btn.setStyleSheet(f"""
-                    QPushButton {{
-                        background-color: rgb({int(color[0]*255)}, {int(color[1]*255)}, {int(color[2]*255)});
-                        color: {text_color};
-                        border: 1px solid #555;
-                        border-radius: 5px;
-                        padding: 8px;
-                        font-weight: bold;
-                        min-height: 30px;
-                    }}
-                    QPushButton:hover {{
-                        border: 2px solid #fff;
-                    }}
-                    QPushButton:pressed {{
-                        background-color: rgba({int(color[0]*255)}, {int(color[1]*255)}, {int(color[2]*255)}, 200);
-                    }}
-                """)
-        
         # 自定义按钮样式
         self.circle_control.custom_btn.setStyleSheet("""
             QPushButton {
@@ -366,7 +332,6 @@ class MainWindow(QMainWindow):
     def connectSignals(self):
         """连接所有信号"""
         # 圆形演示信号
-        self.circle_control.colorSelected.connect(self.circle_canvas.setCircleColor)
         self.circle_control.customColorClicked.connect(self.chooseCustomColor)
         self.circle_control.offsetChanged.connect(self.circle_canvas.setCircleOffset)
         self.circle_control.radiusChanged.connect(self.circle_canvas.setCircleRadius)

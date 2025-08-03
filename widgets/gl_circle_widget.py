@@ -25,6 +25,13 @@ class GLCircleWidget(QOpenGLWidget):
         self.offset = [0.2, 0.2]  # 默认偏移
         self.radius = 0.2  # 默认半径
         self.blackHoleMass = 1.49e7  # 默认黑洞质量 (太阳质量单位)
+        self.background_texture = None  # 添加背景纹理
+        self.backgroundType = 0  # 0: 棋盘, 1: 星空, 2: 纯色, 3: 纹理
+        # 添加设置背景类型的方法
+
+    def setBackgroundType(self, bg_type):
+        self.backgroundType = bg_type
+        self.update()
 
     def loadShaderFromFile(self, shader_type, file_path):
         """从文件加载着色器"""
@@ -124,7 +131,14 @@ class GLCircleWidget(QOpenGLWidget):
         self.program.setUniformValue("iResolution", self.width(), self.height())
         self.program.setUniformValue("offset", *self.offset)
         self.program.setUniformValue("radius", self.radius)
-        self.program.setUniformValue("MBlackHole", self.blackHoleMass)  # 传递黑洞质量
+        self.program.setUniformValue("MBlackHole", self.blackHoleMass)
+        self.program.setUniformValue("backgroundType", self.backgroundType)  # 设置背景类型
+        
+        # 绑定背景纹理（如果存在）
+        if self.background_texture:
+            gl.glActiveTexture(gl.GL_TEXTURE0)
+            gl.glBindTexture(gl.GL_TEXTURE_2D, self.background_texture)
+            self.program.setUniformValue("backgroundTexture", 0)
         
         # 绑定VAO
         gl.glBindVertexArray(self.vao)
@@ -134,6 +148,10 @@ class GLCircleWidget(QOpenGLWidget):
         
         # 解绑VAO
         gl.glBindVertexArray(0)
+        
+        # 解绑纹理
+        if self.background_texture:
+            gl.glBindTexture(gl.GL_TEXTURE_2D, 0)
         
         # 释放着色器程序
         self.program.release()

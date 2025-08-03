@@ -36,7 +36,45 @@ class ControlPanel(QFrame):
         color_layout.addWidget(self.custom_btn)
         
         control_layout.addWidget(self.color_group)
+
+        # 背景选择部分
+        self.bg_group = QGroupBox("Background Type")
+        bg_layout = QVBoxLayout(self.bg_group)
+        bg_layout.setSpacing(8)
+
+        # 创建一个按钮布局
+        bg_button_layout = QHBoxLayout()
+        bg_layout.addLayout(bg_button_layout)
+
+        # 背景类型选择按钮
+        self.bg_chess_btn = QPushButton("Chess")
+        self.bg_chess_btn.setCheckable(True)  # 使按钮可选中
+        self.bg_chess_btn.setChecked(True)    # 默认选中
+        self.bg_chess_btn.setObjectName("bg_chess_btn")  # 设置对象名用于样式
+        self.bg_chess_btn.clicked.connect(lambda: self.setBackgroundType(0))
+        bg_button_layout.addWidget(self.bg_chess_btn)
+
+        self.bg_stars_btn = QPushButton("Stars")
+        self.bg_stars_btn.setCheckable(True)
+        self.bg_stars_btn.setObjectName("bg_stars_btn")
+        self.bg_stars_btn.clicked.connect(lambda: self.setBackgroundType(1))
+        bg_button_layout.addWidget(self.bg_stars_btn)
+
+        self.bg_solid_btn = QPushButton("Solid")
+        self.bg_solid_btn.setCheckable(True)
+        self.bg_solid_btn.setObjectName("bg_solid_btn")
+        self.bg_solid_btn.clicked.connect(lambda: self.setBackgroundType(2))
+        bg_button_layout.addWidget(self.bg_solid_btn)
+
+        self.bg_texture_btn = QPushButton("Texture")
+        self.bg_texture_btn.setCheckable(True)
+        self.bg_texture_btn.setObjectName("bg_texture_btn")
+        self.bg_texture_btn.clicked.connect(lambda: self.setBackgroundType(3))
+        bg_button_layout.addWidget(self.bg_texture_btn)
         
+        # 在颜色控制部分后添加背景选择组
+        control_layout.addWidget(self.bg_group)
+
         # 黑洞质量控制部分
         self.mass_group = QGroupBox("Black Hole Mass (Solar Masses)")
         mass_layout = QVBoxLayout(self.mass_group)
@@ -161,6 +199,11 @@ class ControlPanel(QFrame):
         """设置宽高比显示文本"""
         self.ratio_label.setText(ratio_text)
         
+        # 添加这个方法
+    def setBackgroundType(self, bg_type):
+        """设置背景类型并发出信号"""
+        self.backgroundTypeChanged.emit(bg_type)
+
     def onOffsetChanged(self):
         """偏移改变时处理"""
         x = self.x_slider.value() / 100.0
@@ -196,14 +239,15 @@ class ControlPanel(QFrame):
     def customColorRequested(self):
         self.customColorClicked.emit()
 
-# 为控件面板添加信号
+# 为控件面板添加背景类型信号
 class ControlPanelSignals(ControlPanel):
     colorSelected = pyqtSignal(float, float, float)
     customColorClicked = pyqtSignal()
     offsetChanged = pyqtSignal(float, float)
     radiusChanged = pyqtSignal(float)
     requestAspectRatioUpdate = pyqtSignal()
-    massChanged = pyqtSignal(float)  # 添加质量信号
+    massChanged = pyqtSignal(float)
+    backgroundTypeChanged = pyqtSignal(int)  # 新增背景类型信号
 
 # 合并信号类
 class ControlPanel(ControlPanelSignals):

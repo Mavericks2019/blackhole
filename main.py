@@ -116,6 +116,7 @@ class MainWindow(QMainWindow):
         
         # 初始更新宽高比
         self.onTabChanged(0)  # 默认选择第一个标签页
+        self.connectSignals()
 
     def checkShaderFiles(self):
         """检查着色器文件是否存在"""
@@ -259,6 +260,50 @@ class MainWindow(QMainWindow):
         
         # 质量值标签样式
         self.circle_control.mass_value_label.setStyleSheet("font-weight: bold; color: #d0d0ff;")
+        
+        # 背景按钮样式
+        bg_button_style = """
+            QPushButton {
+                background-color: #505060;
+                color: #e0e0ff;
+                border: 1px solid #666677;
+                border-radius: 5px;
+                padding: 8px;
+                font-weight: bold;
+                min-height: 30px;
+                min-width: 80px;
+            }
+            QPushButton:hover {
+                background-color: #606070;
+                border: 2px solid #8888aa;
+            }
+            QPushButton:pressed {
+                background-color: #404050;
+            }
+            QPushButton:checked {
+                background-color: #6a6a8a;
+                border: 2px solid #a0a0c0;
+                color: #ffffff;
+            }
+            #bg_chess_btn:checked {
+                background-color: #5a7a8a;
+            }
+            #bg_stars_btn:checked {
+                background-color: #5a6a9a;
+            }
+            #bg_solid_btn:checked {
+                background-color: #6a7a7a;
+            }
+            #bg_texture_btn:checked {
+                background-color: #7a6a8a;
+            }
+        """
+        
+        # 应用样式到背景按钮
+        self.circle_control.bg_chess_btn.setStyleSheet(bg_button_style)
+        self.circle_control.bg_stars_btn.setStyleSheet(bg_button_style)
+        self.circle_control.bg_solid_btn.setStyleSheet(bg_button_style)
+        self.circle_control.bg_texture_btn.setStyleSheet(bg_button_style)
 
     def applyBasicControlStyles(self):
         """应用基本功能控制面板的样式"""
@@ -331,7 +376,7 @@ class MainWindow(QMainWindow):
         footer_label = self.basic_control.findChild(QLabel, None)
         if footer_label and "©" in footer_label.text():
             footer_label.setStyleSheet("color: #9090a0; font-size: 10px; margin-top: 10px;")
-
+            
     def connectSignals(self):
         """连接所有信号"""
         # 圆形演示信号
@@ -339,7 +384,8 @@ class MainWindow(QMainWindow):
         self.circle_control.offsetChanged.connect(self.circle_canvas.setCircleOffset)
         self.circle_control.radiusChanged.connect(self.circle_canvas.setCircleRadius)
         self.circle_control.requestAspectRatioUpdate.connect(self.updateAspectRatio)
-        self.circle_control.massChanged.connect(self.circle_canvas.setBlackHoleMass)  # 新增连接
+        self.circle_control.massChanged.connect(self.circle_canvas.setBlackHoleMass)
+        self.circle_control.backgroundTypeChanged.connect(self.circle_canvas.setBackgroundType)  # 连接背景类型信号
         
         # 基本功能信号
         self.basic_control.rotateRequested.connect(self.basic_canvas.rotateTriangle)

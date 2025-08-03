@@ -24,23 +24,23 @@ float calculateRs(float MBlackHole) {
 
 vec3 uvToDir(vec2 uv)                                                                                   //一堆坐标间变换
 {
-return normalize(vec3(FOV*(2.0*uv.x-1.0),FOV*(2.0*uv.y-1.0)*iResolution.y/iResolution.x,-1.0));
+    return normalize(vec3(FOV*(2.0*uv.x-1.0),FOV*(2.0*uv.y-1.0)*iResolution.y/iResolution.x,-1.0));
 }
 vec2 PosToNDC(vec4 pos)
 {
-return vec2(-pos.x/pos.z,-pos.y/pos.z*iResolution.x/iResolution.y);
+    return vec2(-pos.x/pos.z,-pos.y/pos.z*iResolution.x/iResolution.y);
 }
 vec2 DirToNDC(vec3 dir)
 {
-return vec2(-dir.x/dir.z,-dir.y/dir.z*iResolution.x/iResolution.y);
+    return vec2(-dir.x/dir.z,-dir.y/dir.z*iResolution.x/iResolution.y);
 }
 vec2 DirTouv(vec3 dir)
 {
-return vec2(0.5-0.5*dir.x/dir.z,0.5-0.5*dir.y/dir.z*iResolution.x/iResolution.y);
+    return vec2(0.5-0.5*dir.x/dir.z,0.5-0.5*dir.y/dir.z*iResolution.x/iResolution.y);
 }
 vec2 PosTouv(vec4 Pos)
 {
-return vec2(0.5-0.5*Pos.x/Pos.z,0.5-0.5*Pos.y/Pos.z*iResolution.x/iResolution.y);
+    return vec2(0.5-0.5*Pos.x/Pos.z,0.5-0.5*Pos.y/Pos.z*iResolution.x/iResolution.y);
 }
 
 vec2 backgroundTexCoords(vec3 rd) {

@@ -211,12 +211,13 @@ void main() {
         if(Dis>(100.*Rs) && Dis>lastR && count>50){//远离黑洞
             flag = false;
             uv = DirTouv(RayDir);
-            //vec2 texCoord = fract(uv) * iChannelResolution.xy;
-            fragColor+=0.5*texelFetch(iChannel1, ivec2(vec2(fract(uv.x),fract(uv.y))*iChannelResolution.xy), 0 )*(1.0-fragColor.a);            // fragColor += vec4(.25)*(1.0-fragColor.a);
+            fragColor+=0.5*texelFetch(iChannel1, ivec2(vec2(fract(uv.x),fract(uv.y))*iChannelResolution.xy), 0)*(1.0-fragColor.a);            
+            //fragColor += vec4(.25)*(1.0-fragColor.a);
         }
         if(Dis < 0.1 * Rs){//命中奇点
             flag = false;
         }
     }
+    fragColor.a = 1.0;
 
 }

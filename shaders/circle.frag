@@ -6,8 +6,10 @@ uniform vec2 offset;       // 偏移参数
 uniform float radius;      // 半径参数
 uniform float MBlackHole;  // 黑洞质量（太阳质量单位）
 uniform sampler2D backgroundTexture;  // 背景纹理
-uniform int backgroundType; // 0: 棋盘, 1: 星空, 2: 纯色
+// uniform int backgroundType; // 0: 棋盘, 1: 星空, 2: 纯色
 uniform vec4 iMouse; // 添加 iMouse 变量
+uniform sampler2D iChannel1;         // 棋盘格纹理 (类似Shadertoy)
+uniform vec3 iChannelResolution;  // 声明为vec3数组
 
 // 物理常量
 #define PI 3.141592653589
@@ -79,7 +81,7 @@ vec3 _Campos;
     return a;
 }
 
-vec3 uvToDir(vec2 uv)                                                                                   //一堆坐标间变换
+vec3 uvToDir(vec2 uv) //一堆坐标间变换
 {
     return normalize(vec3(FOV*(2.0*uv.x-1.0),FOV*(2.0*uv.y-1.0)*iResolution.y/iResolution.x,-1.0));
 }
@@ -153,35 +155,6 @@ vec3 chessboardPattern(vec2 uv, float scale) {
     return mix(color1, color2, final);
 }
 
-// 生成星空背景
-vec3 starfieldPattern(vec2 uv) {
-    vec3 color = vec3(0.0);
-    
-    // 基础星空密度
-    float density = 0.1;
-    
-    // 随机星点
-    float star = rand(uv);
-    star = pow(star, 100.0);
-    
-    // 不同大小的星点
-    float star2 = rand(uv * 10.0);
-    star2 = pow(star2, 300.0);
-    
-    // 添加星云效果
-    vec2 q = uv * 5.0;
-    vec2 p = floor(q);
-    vec2 f = fract(q);
-    vec2 r = p * 0.5;
-    float nebula = sin(r.x + r.y * 10.0) * 0.5 + 0.5;
-    
-    color += star * vec3(1.0, 0.9, 0.8);
-    color += star2 * vec3(1.0, 1.0, 1.0);
-    color += nebula * vec3(0.3, 0.2, 0.5) * 0.1;
-    
-    return color;
-}
-
 void main() {
     // 使用传入的黑洞质量参数
     fragColor = vec4(0.,0.,0.,0.);
@@ -193,7 +166,7 @@ void main() {
     
     // 设置相机位置和黑洞位置
     vec3 cameraPos = vec3(0.0, 0.0, 0.0);
-    vec4 BHAPos = vec4(5.*Rs, 0.0, 0.0, 1.0);//黑洞世界位置                                                                        本部分在实际使用时没有
+    vec4 BHAPos = vec4(2.*Rs, 0.0, 0.0, 1.0);//黑洞世界位置                                                                        本部分在实际使用时没有
     vec3 BHRPos = GetCamera(BHAPos).xyz; //
     vec3 RayDir = uvToDir(uv);
     vec3 RayPos = vec3(0.0,0.0,0.0);
@@ -213,10 +186,6 @@ void main() {
     float Dis=length(PosToBH);
     bool flag=true;
     int count=0;
-
-    vec2 screenUV = gl_FragCoord.xy / iResolution.xy;
-    vec3 bgColor = chessboardPattern(screenUV, 15.0);
-    fragColor = vec4(bgColor, 1.0);
 
     while(flag==true){//测地raymarching
         lastRayPos = RayPos;
@@ -242,8 +211,8 @@ void main() {
         if(Dis>(100.*Rs) && Dis>lastR && count>50){//远离黑洞
             flag = false;
             uv = DirTouv(RayDir);
-            //fragColor += 0.5*texelFetch(iChannel1, ivec2(vec2(fract(uv.x),fract(uv.y))*iChannelResolution[1].xy), 0 )*(1.0-fragColor.a);
-            //fragColor += vec4(.25)*(1.0-fragColor.a);
+            //vec2 texCoord = fract(uv) * iChannelResolution.xy;
+            fragColor+=0.5*texelFetch(iChannel1, ivec2(vec2(fract(uv.x),fract(uv.y))*iChannelResolution.xy), 0 )*(1.0-fragColor.a);            // fragColor += vec4(.25)*(1.0-fragColor.a);
         }
         if(Dis < 0.1 * Rs){//命中奇点
             flag = false;

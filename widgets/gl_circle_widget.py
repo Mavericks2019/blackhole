@@ -1,9 +1,10 @@
 import math
 import os
+import numpy as np
 from PyQt6.QtOpenGLWidgets import QOpenGLWidget
 from PyQt6.QtOpenGL import QOpenGLShaderProgram, QOpenGLShader
 from PyQt6.QtCore import Qt, QFile, QTextStream, QPoint
-from PyQt6.QtGui import QSurfaceFormat, QMouseEvent
+from PyQt6.QtGui import QSurfaceFormat, QMouseEvent, QImage
 from OpenGL import GL as gl
 
 class GLCircleWidget(QOpenGLWidget):
@@ -26,7 +27,9 @@ class GLCircleWidget(QOpenGLWidget):
         self.radius = 0.2  # 默认半径
         self.blackHoleMass = 1.49e7  # 默认黑洞质量 (太阳质量单位)
         self.background_texture = None  # 添加背景纹理
+        self.chess_texture = None       # 添加棋格纹理 (iChannel1)
         self.backgroundType = 0  # 0: 棋盘, 1: 星空, 2: 纯色, 3: 纹理
+        self.chess_texture_resolution = [64.0, 64.0, 0.0]  # 棋格纹理分辨率 (宽, 高, 深度)
         
         # 添加 iMouse 变量 (类似Shadertoy的实现)
         self.iMouse = [0.0, 0.0, 0.0, 0.0]  # [current_x, current_y, click_x, click_y]
@@ -36,6 +39,44 @@ class GLCircleWidget(QOpenGLWidget):
     def setBackgroundType(self, bg_type):
         self.backgroundType = bg_type
         self.update()
+
+    def createChessTexture(self):
+        """创建棋格纹理 (iChannel1)"""
+        # 创建 64x64 的棋格纹理
+        size = 64
+        texture_data = np.zeros((size, size, 4), dtype=np.uint8)
+        
+        # 定义棋格颜色
+        color1 = [220, 220, 220, 255]  # 浅色
+        color2 = [80, 80, 100, 255]    # 深色
+        
+        # 创建棋格图案
+        tile_size = size // 8
+        for y in range(size):
+            for x in range(size):
+                tile_x = x // tile_size
+                tile_y = y // tile_size
+                
+                if (tile_x + tile_y) % 2 == 0:
+                    texture_data[y, x] = color1
+                else:
+                    texture_data[y, x] = color2
+        
+        # 创建OpenGL纹理
+        self.chess_texture = gl.glGenTextures(1)
+        gl.glBindTexture(gl.GL_TEXTURE_2D, self.chess_texture)
+        
+        # 设置纹理参数
+        gl.glTexParameteri(gl.GL_TEXTURE_2D, gl.GL_TEXTURE_WRAP_S, gl.GL_REPEAT)
+        gl.glTexParameteri(gl.GL_TEXTURE_2D, gl.GL_TEXTURE_WRAP_T, gl.GL_REPEAT)
+        gl.glTexParameteri(gl.GL_TEXTURE_2D, gl.GL_TEXTURE_MIN_FILTER, gl.GL_LINEAR)
+        gl.glTexParameteri(gl.GL_TEXTURE_2D, gl.GL_TEXTURE_MAG_FILTER, gl.GL_LINEAR)
+        
+        # 上传纹理数据
+        gl.glTexImage2D(gl.GL_TEXTURE_2D, 0, gl.GL_RGBA, size, size, 0, 
+                       gl.GL_RGBA, gl.GL_UNSIGNED_BYTE, texture_data)
+        
+        gl.glBindTexture(gl.GL_TEXTURE_2D, 0)
 
     def loadShaderFromFile(self, shader_type, file_path):
         """从文件加载着色器"""
@@ -90,6 +131,9 @@ class GLCircleWidget(QOpenGLWidget):
         # 生成全屏矩形顶点数据
         self.generateScreenQuad()
         
+        # 创建棋格纹理
+        self.createChessTexture()
+        
         # 解绑VAO
         gl.glBindVertexArray(0)
 
@@ -141,7 +185,19 @@ class GLCircleWidget(QOpenGLWidget):
         # 传递 iMouse 变量 (类似Shadertoy)
         self.program.setUniformValue("iMouse", *self.iMouse)
         
-        # 绑定背景纹理（如果存在）
+        # 传递棋格纹理分辨率 (iChannelResolution[1])
+        self.program.setUniformValue("iChannelResolution", 
+                                self.chess_texture_resolution[0],
+                                self.chess_texture_resolution[1],
+                                self.chess_texture_resolution[2])
+        
+        # 绑定棋格纹理 (iChannel1) 到纹理单元1
+        if self.chess_texture:
+            gl.glActiveTexture(gl.GL_TEXTURE1)
+            gl.glBindTexture(gl.GL_TEXTURE_2D, self.chess_texture)
+            self.program.setUniformValue("iChannel1", 1)
+        
+        # 绑定背景纹理（如果存在）到纹理单元0
         if self.background_texture:
             gl.glActiveTexture(gl.GL_TEXTURE0)
             gl.glBindTexture(gl.GL_TEXTURE_2D, self.background_texture)

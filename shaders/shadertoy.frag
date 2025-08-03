@@ -61,7 +61,7 @@ vec3 _Campos;
         )*a;
     return a;
 }
-vec3 uvToDir(vec2 uv)                                                                                   //一堆坐标间变换
+vec3 uvToDir(vec2 uv) //一堆坐标间变换
 {
 return normalize(vec3(FOV*(2.0*uv.x-1.0),FOV*(2.0*uv.y-1.0)*iResolution.y/iResolution.x,-1.0));
 }

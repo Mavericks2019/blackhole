@@ -2,8 +2,8 @@ import math
 import os
 from PyQt6.QtOpenGLWidgets import QOpenGLWidget
 from PyQt6.QtOpenGL import QOpenGLShaderProgram, QOpenGLShader
-from PyQt6.QtCore import Qt, QFile, QTextStream
-from PyQt6.QtGui import QSurfaceFormat
+from PyQt6.QtCore import Qt, QFile, QTextStream, QPoint
+from PyQt6.QtGui import QSurfaceFormat, QMouseEvent
 from OpenGL import GL as gl
 
 class GLCircleWidget(QOpenGLWidget):
@@ -27,7 +27,11 @@ class GLCircleWidget(QOpenGLWidget):
         self.blackHoleMass = 1.49e7  # 默认黑洞质量 (太阳质量单位)
         self.background_texture = None  # 添加背景纹理
         self.backgroundType = 0  # 0: 棋盘, 1: 星空, 2: 纯色, 3: 纹理
-        # 添加设置背景类型的方法
+        
+        # 添加 iMouse 变量 (类似Shadertoy的实现)
+        self.iMouse = [0.0, 0.0, 0.0, 0.0]  # [current_x, current_y, click_x, click_y]
+        self.mousePressed = False  # 跟踪鼠标按下状态
+        self.setMouseTracking(True)  # 启用鼠标跟踪
 
     def setBackgroundType(self, bg_type):
         self.backgroundType = bg_type
@@ -134,6 +138,9 @@ class GLCircleWidget(QOpenGLWidget):
         self.program.setUniformValue("MBlackHole", self.blackHoleMass)
         self.program.setUniformValue("backgroundType", self.backgroundType)  # 设置背景类型
         
+        # 传递 iMouse 变量 (类似Shadertoy)
+        self.program.setUniformValue("iMouse", *self.iMouse)
+        
         # 绑定背景纹理（如果存在）
         if self.background_texture:
             gl.glActiveTexture(gl.GL_TEXTURE0)
@@ -160,6 +167,54 @@ class GLCircleWidget(QOpenGLWidget):
         # 设置视口大小
         gl.glViewport(0, 0, w, h)
         # 触发重绘以更新宽高比
+        self.update()
+        
+    def mousePressEvent(self, event: QMouseEvent):
+        """鼠标按下事件"""
+        if event.button() == Qt.MouseButton.LeftButton:
+            self.mousePressed = True
+            pos = event.position()
+            
+            # 更新 iMouse 的 z 和 w 分量 (按下时的坐标)
+            self.iMouse[2] = pos.x()
+            self.iMouse[3] = self.height() - pos.y()  # 翻转Y坐标
+            
+            # 更新当前坐标
+            self.iMouse[0] = pos.x()
+            self.iMouse[1] = self.height() - pos.y()
+            
+            self.update()
+
+    def mouseReleaseEvent(self, event: QMouseEvent):
+        """鼠标释放事件"""
+        if event.button() == Qt.MouseButton.LeftButton:
+            self.mousePressed = False
+            
+            # 重置按下坐标 (可选，根据需求)
+            # self.iMouse[2] = 0.0
+            # self.iMouse[3] = 0.0
+            
+            # 更新当前坐标
+            pos = event.position()
+            self.iMouse[0] = pos.x()
+            self.iMouse[1] = self.height() - pos.y()
+            
+            self.update()
+
+    def mouseMoveEvent(self, event: QMouseEvent):
+        """鼠标移动事件"""
+        pos = event.position()
+        
+        # 更新当前坐标
+        self.iMouse[0] = pos.x()
+        self.iMouse[1] = self.height() - pos.y()  # 翻转Y坐标
+        
+        # 如果按下状态，保持按下坐标不变
+        # 如果不按下状态，按下坐标设为0
+        if not self.mousePressed:
+            self.iMouse[2] = 0.0
+            self.iMouse[3] = 0.0
+        
         self.update()
         
     def setCircleColor(self, r, g, b):

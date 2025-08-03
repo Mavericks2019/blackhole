@@ -7,6 +7,7 @@ uniform float radius;      // 半径参数
 uniform float MBlackHole;  // 黑洞质量（太阳质量单位）
 uniform sampler2D backgroundTexture;  // 背景纹理
 uniform int backgroundType; // 0: 棋盘, 1: 星空, 2: 纯色
+uniform vec4 iMouse; // 添加 iMouse 变量
 
 // 物理常量
 #define PI 3.141592653589
@@ -20,6 +21,62 @@ uniform int backgroundType; // 0: 棋盘, 1: 星空, 2: 纯色
 // 计算史瓦西半径 (Schwarzschild radius)
 float calculateRs(float MBlackHole) {
     return 2.0 * MBlackHole * G0 / (lightspeed * lightspeed) * Msun;
+}
+
+vec4 GetCamera(vec4 a)//相机系平移旋转  本部分在实际使用时uniform输入
+{
+    float _Theta=4.0*PI*iMouse.x/iResolution.x;
+    float _Phi=0.999*PI*iMouse.y/iResolution.y+0.0005;
+    float _R=0.000057;
+    vec3 _Rotcen=vec3(0.0,0.0,0.0);
+    vec3 _Campos;
+        vec3 reposcam=vec3(
+        _R * sin(_Phi) * cos(_Theta),
+        _R * sin(_Phi) * sin(_Theta),
+        -_R * cos(_Phi));
+        _Campos = _Rotcen + reposcam;
+        vec3 vecz =vec3( 0.0,0.0,1.0 );
+        vec3 _X = normalize(cross(vecz, reposcam));
+        vec3 _Y = normalize(cross(reposcam, _X));
+        vec3 _Z = normalize(reposcam);
+        a=(transpose(mat4x4(//注意glsl的矩阵和线性代数里学的矩阵差个转置
+            1., 0., 0., -_Campos.x,
+            0., 1., 0., -_Campos.y,
+            0., 0., 1., -_Campos.z,
+            0., 0., 0., 1.
+        ))*a);
+        a=transpose(mat4x4(
+            _X.x,_X.y,_X.z,0.,
+            _Y.x,_Y.y,_Y.z,0.,
+            _Z.x,_Z.y,_Z.z,0.,
+            0.   ,0.   ,0.   ,1.)
+            )*a;  
+        return a;
+}
+
+vec4 GetCameraRot(vec4 a)//摄影机系旋转，用于矢量换系   本部分在实际使用时uniform输入
+{
+float _Theta=4.0*PI*iMouse.x/iResolution.x;
+float _Phi=0.999*PI*iMouse.y/iResolution.y+0.0005;
+float _R=0.000057;
+vec3 _Rotcen=vec3(0.0,0.0,0.0);
+vec3 _Campos;
+    vec3 reposcam=vec3(
+    _R * sin(_Phi) * cos(_Theta),
+    _R * sin(_Phi) * sin(_Theta),
+    -_R * cos(_Phi));
+    _Campos = _Rotcen + reposcam;
+    vec3 vecz =vec3( 0.0,0.0,1.0 );
+    vec3 _X = normalize(cross(vecz, reposcam));
+    vec3 _Y = normalize(cross(reposcam, _X));
+    vec3 _Z = normalize(reposcam);
+    a=transpose(mat4x4(
+        _X.x,_X.y,_X.z,0.,
+        _Y.x,_Y.y,_Y.z,0.,
+        _Z.x,_Z.y,_Z.z,0.,
+        0.   ,0.   ,0.   ,1.)
+        )*a;
+    return a;
 }
 
 vec3 uvToDir(vec2 uv)                                                                                   //一堆坐标间变换
@@ -127,63 +184,70 @@ vec3 starfieldPattern(vec2 uv) {
 
 void main() {
     // 使用传入的黑洞质量参数
-    float Rs = calculateRs(MBlackHole);
+    fragColor = vec4(0.,0.,0.,0.);
+    vec2 uv = gl_FragCoord.xy / iResolution.xy;
+
+    float MBH = 1.49e7;//单位是太阳质量                                                                                            本部分在实际使用时uniform输入
+    float Rs = 2.*MBH*G0 / lightspeed / lightspeed * Msun;//单位是米 
+    Rs=Rs/ly;//现在单位是ly 
     
     // 设置相机位置和黑洞位置
     vec3 cameraPos = vec3(0.0, 0.0, 0.0);
-    vec3 blackHolePos = vec3(offset, 5.0 * Rs);  // 使用传入的偏移参数
-    
-    // 计算UV坐标 [-1.0, 1.0] 范围
-    vec2 uv = (2.0 * gl_FragCoord.xy - iResolution.xy) / min(iResolution.x, iResolution.y);
-    
-    // 创建光线
-    vec3 ro = cameraPos;  // 光线起点 (相机位置)
-    vec3 rd = normalize(vec3(uv, 1.0));  // 光线方向
-    
-    // 计算光线与球体的交点
-    float t = raySphereIntersection(ro, rd, blackHolePos, Rs);
-    
-    if (t > 0.0) {
-        // 计算交点位置
-        vec3 hitPoint = ro + t * rd;
+    vec4 BHAPos = vec4(5.*Rs, 0.0, 0.0, 1.0);//黑洞世界位置                                                                        本部分在实际使用时没有
+    vec3 BHRPos = GetCamera(BHAPos).xyz; //
+    vec3 RayDir = uvToDir(uv);
+    vec3 RayPos = vec3(0.0,0.0,0.0);
+    vec3 lastRayPos;
+    vec3 lastRayDir;
+    vec3 PosToBH = RayPos-BHRPos;
+    vec3 NPosToBH = normalize(PosToBH);
+    float DistanceToBlackHole = length(PosToBH);
+    RayDir=normalize(RayDir-NPosToBH*dot(PosToBH,RayDir)*(-sqrt(max(1.0-Rs/DistanceToBlackHole,0.00000000000000001))+1.0));
+
+    float steplength;
+    float lastR=length(PosToBH);
+    float costheta;
+    float dthe;    
+    float dphirate;
+    float dl;
+    float Dis=length(PosToBH);
+    bool flag=true;
+    int count=0;
+
+    vec2 screenUV = gl_FragCoord.xy / iResolution.xy;
+    vec3 bgColor = chessboardPattern(screenUV, 15.0);
+    fragColor = vec4(bgColor, 1.0);
+
+    while(flag==true){//测地raymarching
+        lastRayPos = RayPos;
+        lastRayDir = RayDir;
+        lastR = Dis;
+        costheta = length(cross(NPosToBH,RayDir));//前进方向与切向夹角
+        dphirate = -1.0*costheta*costheta*costheta*(1.5*Rs/Dis);//单位长度光偏折角
+
+        dl = 1.0;
+        dl *= 0.15;
+        dl *= Dis;
+
+        RayPos += RayDir*dl;
+        dthe = dl / Dis*dphirate;
+        RayDir = normalize(RayDir+(dthe+dthe*dthe*dthe/3.0)*cross(cross(RayDir,NPosToBH),RayDir)/costheta);//更新方向，里面的（dthe +dthe^3/3）是tan（dthe）
+        steplength = length(RayPos-lastRayPos);
+                
+        PosToBH = RayPos - BHRPos;
+        Dis = length(PosToBH);
+        NPosToBH = PosToBH/Dis;
         
-        // 计算法线 (用于简单着色)
-        vec3 normal = normalize(hitPoint - blackHolePos);
-        
-        // 简单光照计算
-        vec3 lightDir = normalize(vec3(1.0, 1.0, -1.0));
-        float diff = max(dot(normal, lightDir), 0.0);
-        vec3 diffuse = circleColor * diff;  // 使用自定义颜色
-        
-        // 添加一点环境光
-        vec3 ambient = circleColor * 0.1;
-        
-        // 最终颜色
-        fragColor = vec4(diffuse + ambient, 1.0);
-    } else {
-        // 没有击中黑洞 - 显示背景
-        
-        vec3 bgColor;
-        
-        // 根据背景类型选择不同的背景
-        if (backgroundType == 0) { // 棋盘背景
-            // 使用屏幕空间UV
-            vec2 screenUV = gl_FragCoord.xy / iResolution.xy;
-            bgColor = chessboardPattern(screenUV, 15.0);
-        } else if (backgroundType == 1) { // 星空背景
-            vec2 screenUV = gl_FragCoord.xy / iResolution.xy;
-            bgColor = starfieldPattern(screenUV);
-        } else if (backgroundType == 2) { // 纯色背景
-            bgColor = vec3(0.1, 0.1, 0.15);
-        } else { // 默认使用纹理
-            vec2 texCoords = backgroundTexCoords(rd);
-            bgColor = texture(backgroundTexture, texCoords).rgb;
+        count++;
+        if(Dis>(100.*Rs) && Dis>lastR && count>50){//远离黑洞
+            flag = false;
+            uv = DirTouv(RayDir);
+            //fragColor += 0.5*texelFetch(iChannel1, ivec2(vec2(fract(uv.x),fract(uv.y))*iChannelResolution[1].xy), 0 )*(1.0-fragColor.a);
+            //fragColor += vec4(.25)*(1.0-fragColor.a);
         }
-        
-        // 添加空间感效果 - 使背景变暗
-        // float distanceFactor = 1.0 - smoothstep(0.0, 0.7, length(uv));
-        // bgColor *= mix(0.7, 1.0, distanceFactor);
-        
-        fragColor = vec4(bgColor, 1.0);
+        if(Dis < 0.1 * Rs){//命中奇点
+            flag = false;
+        }
     }
+
 }

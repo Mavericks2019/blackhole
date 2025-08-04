@@ -35,6 +35,7 @@ class GLCircleWidget(QOpenGLWidget):
         self.iMouse = [0.0, 0.0, 0.0, 0.0]  # [current_x, current_y, click_x, click_y]
         self.mousePressed = False  # 跟踪鼠标按下状态
         self.setMouseTracking(True)  # 启用鼠标跟踪
+        self.lastMousePos = QPoint()  # 添加变量记录上次鼠标位置
 
     def setBackgroundType(self, bg_type):
         self.backgroundType = bg_type
@@ -230,6 +231,7 @@ class GLCircleWidget(QOpenGLWidget):
         if event.button() == Qt.MouseButton.LeftButton:
             self.mousePressed = True
             pos = event.position()
+            self.lastMousePos = event.pos()  # 记录初始位置
             
             # 更新 iMouse 的 z 和 w 分量 (按下时的坐标)
             self.iMouse[2] = pos.x()
@@ -246,9 +248,9 @@ class GLCircleWidget(QOpenGLWidget):
         if event.button() == Qt.MouseButton.LeftButton:
             self.mousePressed = False
             
-            # 重置按下坐标 (可选，根据需求)
-            # self.iMouse[2] = 0.0
-            # self.iMouse[3] = 0.0
+            # 重置按下坐标
+            self.iMouse[2] = 0.0
+            self.iMouse[3] = 0.0
             
             # 更新当前坐标
             pos = event.position()
@@ -259,17 +261,24 @@ class GLCircleWidget(QOpenGLWidget):
 
     def mouseMoveEvent(self, event: QMouseEvent):
         """鼠标移动事件"""
+        if not self.mousePressed:
+            # 未按下时不更新视角
+            return
+            
         pos = event.position()
+        currentPos = event.pos()
+        
+        # 计算鼠标移动增量
+        delta = currentPos - self.lastMousePos
+        self.lastMousePos = currentPos
         
         # 更新当前坐标
         self.iMouse[0] = pos.x()
         self.iMouse[1] = self.height() - pos.y()  # 翻转Y坐标
         
-        # 如果按下状态，保持按下坐标不变
-        # 如果不按下状态，按下坐标设为0
-        if not self.mousePressed:
-            self.iMouse[2] = 0.0
-            self.iMouse[3] = 0.0
+        # 根据移动增量更新按下坐标
+        self.iMouse[2] += delta.x()
+        self.iMouse[3] -= delta.y()  # Y轴方向相反
         
         self.update()
         

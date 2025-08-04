@@ -299,7 +299,7 @@ void main() {
     vec4 BHAPos = vec4(2.*Rs, 0.0, 0.0, 1.0);//黑洞世界位置                                                                        本部分在实际使用时没有
     vec3 BHRPos = GetCamera(BHAPos).xyz; //
     vec3 RayDir = uvToDir(uv);
-    vec3 RayPos = vec3(0.0,0.0,0.0);
+    vec3 RayPos = vec3(0.0,0.0,20.*Rs);
     vec3 lastRayPos;
     vec3 lastRayDir;
     vec3 PosToBH = RayPos-BHRPos;

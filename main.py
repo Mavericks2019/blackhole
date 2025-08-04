@@ -388,7 +388,7 @@ class MainWindow(QMainWindow):
         self.circle_control.backgroundTypeChanged.connect(self.circle_canvas.setBackgroundType)  # 连接背景类型信号
         
         # 基本功能信号
-        self.basic_control.rotateRequested.connect(self.basic_canvas.rotateTriangle)
+        # self.basic_control.rotateRequested.connect(self.basic_canvas.rotateTriangle)
 
     def onTabChanged(self, index):
         """标签页切换事件处理"""

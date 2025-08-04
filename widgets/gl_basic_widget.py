@@ -1,9 +1,11 @@
 import os
 import numpy as np
+import math
 from PyQt6.QtOpenGLWidgets import QOpenGLWidget
 from PyQt6.QtOpenGL import QOpenGLShaderProgram, QOpenGLShader
-from PyQt6.QtCore import Qt, QFile, QTextStream
+from PyQt6.QtCore import Qt, QFile, QTextStream, QTimer
 from OpenGL import GL as gl
+import time
 
 class GLBasicWidget(QOpenGLWidget):
     def __init__(self):
@@ -12,7 +14,12 @@ class GLBasicWidget(QOpenGLWidget):
         self.program = None
         self.vbo = None
         self.vao = None
-        self.rotation_angle = 0.0
+        self.start_time = time.time()
+        
+        # 创建定时器用于动画
+        self.timer = QTimer(self)
+        self.timer.timeout.connect(self.update)
+        self.timer.start(16)  # 约60fps
 
     def loadShaderFromFile(self, shader_type, file_path):
         """从文件加载着色器"""
@@ -60,12 +67,16 @@ class GLBasicWidget(QOpenGLWidget):
         else:
             raise RuntimeError("Shader loading failed")
 
-        # 顶点数据 (彩色三角形)
+        # 顶点数据 (全屏矩形)
         vertices = np.array([
-            # 位置             # 颜色
-            -0.5, -0.5, 0.0,  1.0, 0.0, 0.0,
-             0.5, -0.5, 0.0,  0.0, 1.0, 0.0,
-             0.0,  0.5, 0.0,  0.0, 0.0, 1.0
+            # 位置       # 纹理坐标
+            -1.0, -1.0,  0.0, 0.0,
+             1.0, -1.0,  1.0, 0.0,
+             1.0,  1.0,  1.0, 1.0,
+             
+            -1.0, -1.0,  0.0, 0.0,
+             1.0,  1.0,  1.0, 1.0,
+            -1.0,  1.0,  0.0, 1.0
         ], dtype=np.float32)
 
         # 创建VAO和VBO
@@ -77,33 +88,35 @@ class GLBasicWidget(QOpenGLWidget):
         gl.glBufferData(gl.GL_ARRAY_BUFFER, vertices.nbytes, vertices, gl.GL_STATIC_DRAW)
         
         # 位置属性
-        gl.glVertexAttribPointer(0, 3, gl.GL_FLOAT, gl.GL_FALSE, 6 * vertices.itemsize, gl.ctypes.c_void_p(0))
+        gl.glVertexAttribPointer(0, 2, gl.GL_FLOAT, gl.GL_FALSE, 4 * vertices.itemsize, gl.ctypes.c_void_p(0))
         gl.glEnableVertexAttribArray(0)
         
-        # 颜色属性
-        gl.glVertexAttribPointer(1, 3, gl.GL_FLOAT, gl.GL_FALSE, 6 * vertices.itemsize, gl.ctypes.c_void_p(3 * vertices.itemsize))
+        # 纹理坐标属性
+        gl.glVertexAttribPointer(1, 2, gl.GL_FLOAT, gl.GL_FALSE, 4 * vertices.itemsize, gl.ctypes.c_void_p(2 * vertices.itemsize))
         gl.glEnableVertexAttribArray(1)
         
         gl.glBindBuffer(gl.GL_ARRAY_BUFFER, 0)
         gl.glBindVertexArray(0)
 
     def paintGL(self):
-        gl.glClearColor(0.1, 0.1, 0.15, 1.0)
+        gl.glClearColor(0.0, 0.0, 0.0, 1.0)
         gl.glClear(gl.GL_COLOR_BUFFER_BIT | gl.GL_DEPTH_BUFFER_BIT)
         
         if not self.program or not self.vao:
             return
 
         self.program.bind()
+        
+        # 设置统一变量
+        elapsed_time = time.time() - self.start_time
+        self.program.setUniformValue("iTime", elapsed_time)
+        self.program.setUniformValue("iResolution", self.width(), self.height())
+        
         gl.glBindVertexArray(self.vao)
-        gl.glDrawArrays(gl.GL_TRIANGLES, 0, 3)
+        gl.glDrawArrays(gl.GL_TRIANGLES, 0, 6)
         gl.glBindVertexArray(0)
+        
         self.program.release()
 
     def resizeGL(self, w, h):
         gl.glViewport(0, 0, w, h)
-        
-    def rotateTriangle(self):
-        """旋转三角形"""
-        self.rotation_angle = (self.rotation_angle + 10) % 360
-        self.update()

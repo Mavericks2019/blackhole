@@ -155,6 +155,137 @@ vec3 chessboardPattern(vec2 uv, float scale) {
     return mix(color1, color2, final);
 }
 
+float softHold(float x){//使不大于一
+    return 1.0-1.0/(max(x,0.0)+1.0);
+}
+
+float Vec2Theta(vec2 a,vec2 b)//两平面向量夹角,0到2pi
+{
+if(dot(a,b)>0.0){
+    return asin(0.999999*(a.x*b.y-a.y*b.x)/length(a)/length(b));
+    }else if(dot(a,b)<0.0 && (-a.x*b.y+a.y*b.x)<0.0){
+    return PI-asin(0.999999*(a.x*b.y-a.y*b.x)/length(a)/length(b));
+    }else if(dot(a,b)<0.0 && (-a.x*b.y+a.y*b.x)>0.0){
+    return -PI-asin(0.999999*(a.x*b.y-a.y*b.x)/length(a)/length(b));
+    }
+}
+
+vec3 WavelengthToRgb(float wavelength) {
+    vec3 color = vec3(0.0);
+
+    if (wavelength < 380.0 || wavelength > 750.0) {
+        return color; // 非可见光范围，返回黑色
+    }
+
+    // 根据波长计算颜色
+    if (wavelength >= 380.0 && wavelength < 440.0) {
+        color.r = -(wavelength - 440.0) / (440.0 - 380.0);
+        color.g = 0.0;
+        color.b = 1.0;
+    } else if (wavelength >= 440.0 && wavelength < 490.0) {
+        color.r = 0.0;
+        color.g = (wavelength - 440.0) / (490.0 - 440.0);
+        color.b = 1.0;
+    } else if (wavelength >= 490.0 && wavelength < 510.0) {
+        color.r = 0.0;
+        color.g = 1.0;
+        color.b = -(wavelength - 510.0) / (510.0 - 490.0);
+    } else if (wavelength >= 510.0 && wavelength < 580.0) {
+        color.r = (wavelength - 510.0) / (580.0 - 510.0);
+        color.g = 1.0;
+        color.b = 0.0;
+    } else if (wavelength >= 580.0 && wavelength < 645.0) {
+        color.r = 1.0;
+        color.g = -(wavelength - 645.0) / (645.0 - 580.0);
+        color.b = 0.0;
+    } else if (wavelength >= 645.0 && wavelength <= 750.0) {
+        color.r = 1.0;
+        color.g = 0.0;
+        color.b = 0.0;
+    }
+
+    // 亮度调整
+    float factor = 0.0;
+    if (wavelength >= 380.0 && wavelength < 420.0) {
+        factor = 0.3 + 0.7 * (wavelength - 380.0) / (420.0 - 380.0);
+    } else if (wavelength >= 420.0 && wavelength < 645.0) {
+        factor = 1.0;
+    } else if (wavelength >= 645.0 && wavelength <= 750.0) {
+        factor = 0.3 + 0.7 * (750.0 - wavelength) / (750.0 - 645.0);
+    }
+
+    return color * factor/pow(color.r*color.r+2.25*color.g*color.g+0.36*color.b*color.b,0.5)*(0.1*(color.r+color.g+color.b)+0.9);
+}
+
+float omega(float r,float Rs){//绕黑洞公转角速度
+    return sqrt(lightspeed/ly*lightspeed*Rs/ly/((2.0*r-3.0*Rs)*r*r));
+}
+
+vec3 GetBH(vec4 a,vec3 BHPos,vec3 DiskDir)//BH系平移旋转
+    {
+    vec3 vecz =vec3( 0.0,0.0,1.0 );
+    if(DiskDir==vecz){
+    DiskDir+=0.0001*(vec3(1.0,0.,0.));
+    }
+     vec3 _X = normalize(cross(vecz, DiskDir));
+     vec3 _Y = normalize(cross(DiskDir, _X));
+     vec3 _Z = normalize(DiskDir);
+    a=(transpose(mat4x4(
+        1., 0., 0., -BHPos.x,
+        0., 1., 0., -BHPos.y,
+        0., 0., 1., -BHPos.z,
+        0., 0., 0., 1.
+    ))*a);
+    a=transpose(mat4x4(
+        _X.x,_X.y,_X.z,0.,
+        _Y.x,_Y.y,_Y.z,0.,
+        _Z.x,_Z.y,_Z.z,0.,
+        0.   ,0.   ,0.   ,1.)
+        )*a;
+    return a.xyz;
+}
+
+vec3 GetBHRot(vec4 a,vec3 BHPos,vec3 DiskDir)//BH系旋转
+    {
+    vec3 vecz =vec3( 0.0,0.0,1.0 );
+    if(DiskDir==vecz){
+    DiskDir+=0.0001*(vec3(1.0,0.,0.));
+    }
+    vec3 _X = normalize(cross(vecz, DiskDir));
+    vec3 _Y = normalize(cross(DiskDir, _X));
+    vec3 _Z = normalize(DiskDir);
+
+    a=transpose(mat4x4(
+        _X.x,_X.y,_X.z,0.,
+        _Y.x,_Y.y,_Y.z,0.,
+        _Z.x,_Z.y,_Z.z,0.,
+        0.   ,0.   ,0.   ,1.)
+        )*a;
+    return a.xyz;
+}
+
+vec4 diskcolor(vec4 fragColor,float timerate,float steplength,vec3 RayPos,vec3 lastRayPos,vec3 RayDir,vec3 lastRayDir,vec3 WorldZ,vec3 BHPos,vec3 DiskDir,float Rs,float RIn,float ROut,float diskA,float TPeak4,float shiftMax){//吸积盘
+    vec3 CamOnDisk=GetBH(vec4(0.,0.,0.,1.0),BHPos,DiskDir);//黑洞系下相机位置
+    vec3 References=GetBHRot(vec4(WorldZ,1.0),BHPos,DiskDir);//用于吸积盘角度零点确定
+    vec3 PosOnDisk=GetBH(vec4(RayPos,1.0),BHPos,DiskDir);//光线黑洞系下位置
+    vec3 DirOnDisk=GetBHRot(vec4(RayDir,1.0),BHPos,DiskDir);//光线黑洞系下方向
+    
+    // 此行以下在黑洞坐标系
+
+    float PosR=length(PosOnDisk.xy);
+    float PosZ=PosOnDisk.z;
+    
+    vec4 color=vec4(0.);
+    if(abs(PosZ)<0.5*Rs && PosR<ROut && PosR>RIn){
+            color=vec4(0.05);
+            color.xyz*=steplength   /Rs ;
+            color.a*=steplength    /Rs;
+       }
+   
+
+    return fragColor + color*(1.0-fragColor.a);
+}
+
 void main() {
     // 使用传入的黑洞质量参数
     fragColor = vec4(0.,0.,0.,0.);
@@ -165,7 +296,6 @@ void main() {
     Rs=Rs/ly;//现在单位是ly 
     
     // 设置相机位置和黑洞位置
-    vec3 cameraPos = vec3(0.0, 0.0, 0.0);
     vec4 BHAPos = vec4(2.*Rs, 0.0, 0.0, 1.0);//黑洞世界位置                                                                        本部分在实际使用时没有
     vec3 BHRPos = GetCamera(BHAPos).xyz; //
     vec3 RayDir = uvToDir(uv);
@@ -187,6 +317,16 @@ void main() {
     bool flag=true;
     int count=0;
 
+    // 在main函数顶部添加这些定义
+    float timerate = 0.0; // 时间因子，暂时设为0
+    vec3 WorldZ = vec3(0.0, 0.0, 1.0); // 世界坐标系Z轴
+    vec3 BHRDiskDir = vec3(0.0, 1.0, 0.0); // 吸积盘方向（法向量）
+    float RIn = 2.0 * Rs; // 吸积盘内半径（典型值：3倍史瓦西半径）
+    float ROut = 10.0 * Rs; // 吸积盘外半径（典型值：20倍史瓦西半径）
+    float diskA = 0.0; // 黑洞角动量参数（0-1，0为无自旋）
+    float TPeak4 = 1.0; // 温度峰值参数（无量纲）
+    float shiftMax = 1.0; // 最大多普勒频移因子
+
     while(flag==true){//测地raymarching
         lastRayPos = RayPos;
         lastRayDir = RayDir;
@@ -206,6 +346,9 @@ void main() {
         PosToBH = RayPos - BHRPos;
         Dis = length(PosToBH);
         NPosToBH = PosToBH/Dis;
+
+        fragColor=diskcolor(fragColor, timerate, steplength, RayPos, lastRayPos, RayDir, lastRayDir, 
+                            WorldZ, BHRPos, BHRDiskDir, Rs, RIn, ROut, diskA, TPeak4, shiftMax);//吸积盘颜色
         
         count++;
         if(Dis>(100.*Rs) && Dis>lastR && count>50){//远离黑洞

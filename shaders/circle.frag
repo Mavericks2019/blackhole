@@ -22,10 +22,6 @@ uniform int iFrame;           // 添加 iFrame 变量 (类似Shadertoy)
 #define Msun 1.9891e30
 #define FOV 0.5
 
-// 计算史瓦西半径 (Schwarzschild radius)
-float calculateRs(float MBlackHole) {
-    return 2.0 * MBlackHole * G0 / (lightspeed * lightspeed) * Msun;
-}
 
 vec4 GetCamera(vec4 a)//相机系平移旋转  本部分在实际使用时uniform输入
 {
@@ -114,62 +110,6 @@ vec2 backgroundTexCoords(vec3 rd) {
     if (u > 1.0) u -= 1.0;
     
     return vec2(u, v);
-}
-
-// 计算光线与球体的交点
-float raySphereIntersection(vec3 ro, vec3 rd, vec3 center, float radius) {
-    vec3 oc = ro - center;
-    float a = dot(rd, rd);
-    float b = 2.0 * dot(oc, rd);
-    float c = dot(oc, oc) - radius * radius;
-    float discriminant = b * b - 4.0 * a * c;
-    
-    if (discriminant < 0.0) {
-        return -1.0;
-    }
-    
-    return (-b - sqrt(discriminant)) / (2.0 * a);
-}
-
-// 生成随机数函数
-float rand(vec2 co) {
-    return fract(sin(dot(co.xy, vec2(12.9898, 78.233)) * 43758.5453));
-}
-
-// 生成棋盘格
-vec3 chessboardPattern(vec2 uv, float scale) {
-    uv *= scale;
-    vec2 f = fract(uv);
-    vec2 i = floor(uv);
-    
-    // 创建棋盘格
-    float pattern = mod(i.x + i.y, 2.0);
-    
-    // 添加边框效果
-    float border = 0.02;
-    f = smoothstep(0.0, border, f) * smoothstep(1.0, 1.0 - border, f);
-    float final = pattern * f.x * f.y;
-    
-    // 两种颜色
-    vec3 color1 = vec3(0.8, 0.8, 0.8); // 浅色
-    vec3 color2 = vec3(0.2, 0.2, 0.2); // 深色
-    
-    return mix(color1, color2, final);
-}
-
-float softHold(float x){//使不大于一
-    return 1.0-1.0/(max(x,0.0)+1.0);
-}
-
-float Vec2Theta(vec2 a,vec2 b)//两平面向量夹角,0到2pi
-{
-    if(dot(a,b)>0.0){
-        return asin(0.999999*(a.x*b.y-a.y*b.x)/length(a)/length(b));
-    }else if(dot(a,b)<0.0 && (-a.x*b.y+a.y*b.x)<0.0){
-        return PI-asin(0.999999*(a.x*b.y-a.y*b.x)/length(a)/length(b));
-    }else if(dot(a,b)<0.0 && (-a.x*b.y+a.y*b.x)>0.0){
-        return -PI-asin(0.999999*(a.x*b.y-a.y*b.x)/length(a)/length(b));
-    }
 }
 
 vec3 WavelengthToRgb(float wavelength) {
@@ -303,7 +243,7 @@ void main() {
     Rs=Rs/ly;//现在单位是ly 
     
     // 设置相机位置和黑洞位置
-    vec4 BHAPos = vec4(2.*Rs, 0.0, 0.0, 1.0);//黑洞世界位置本部分在实际使用时没有
+    vec4 BHAPos = vec4(5.*Rs, 0.0, 0.0, 1.0);//黑洞世界位置本部分在实际使用时没有
     vec3 BHRPos = GetCamera(BHAPos).xyz; //
     vec3 RayDir=uvToDir(uv+0.5*vec2(RandomStep(uv, fract(iTime * 1.0+0.5)),RandomStep(uv, fract(iTime * 1.0)))/iResolution.xy);
     vec3 RayPos = vec3(0.0,0.0,20.*Rs);
@@ -327,7 +267,7 @@ void main() {
     // 在main函数顶部添加这些定义
     float timerate = 0.0; // 时间因子，暂时设为0
     vec3 WorldZ = vec3(0.0, 0.0, 1.0); // 世界坐标系Z轴
-    vec3 BHRDiskDir = vec3(0.0, 1.0, 1.0); // 吸积盘方向（法向量）
+    vec3 BHRDiskDir = vec3(1.0, 1.0, 1.0); // 吸积盘方向（法向量）
     float RIn = 2.0 * Rs; // 吸积盘内半径（典型值：3倍史瓦西半径）
     float ROut = 10.0 * Rs; // 吸积盘外半径（典型值：20倍史瓦西半径）
     float diskA = 0.0; // 黑洞角动量参数（0-1，0为无自旋）
@@ -342,12 +282,25 @@ void main() {
         dphirate = -1.0*costheta*costheta*costheta*(1.5*Rs/Dis);//单位长度光偏折角
 
         if(count==0){
-            dl=RandomStep(uv, fract(iTime * 1.0));//光起步步长抖动
+                dl=RandomStep(uv, fract(iTime * 1.0));//光起步步长抖动
         }else{
-            dl=1.0;
+                dl=1.0;
         }
-        dl *= 0.15;
-        dl *= Dis;
+                
+        dl*=0.15+0.25*min(max(0.,0.5*(0.5*Dis/max(10.*Rs,ROut)-1.)),1.);
+        //什么？刚才不还是0.15吗?事实上为了性能远处可以让步长更大
+                
+        if((Dis)>=2.0*ROut){//在吸积盘附近缩短步长。步长作为位置的函数必须连续,最好高阶可导,不然会造成光线上步前缘与下步后缘不重合,产生条纹
+                dl*=Dis;
+        }else if((Dis)>=1.0*ROut){
+                dl*=(max(abs(dot(BHRDiskDir,PosToBH)),Rs)*(2.0*ROut-Dis)+Dis*(Dis-ROut))/ROut;
+        }else if((Dis)>=RIn){
+                dl*=max(abs(dot(BHRDiskDir,PosToBH)),Rs);
+        }else if((Dis)>2.*Rs){
+                dl*=(max(abs(dot(BHRDiskDir,PosToBH)),Rs)*(Dis-2.0*Rs)+Dis*(RIn-Dis))/(RIn-2.0*Rs);
+        }else{
+                dl*=Dis;
+        } 
 
         RayPos += RayDir*dl;
         dthe = dl / Dis*dphirate;

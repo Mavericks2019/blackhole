@@ -11,6 +11,7 @@ uniform vec4 iMouse; // 添加 iMouse 变量
 uniform float iTime;              // 添加 iTime 变量 (类似Shadertoy)
 uniform sampler2D iChannel1;         // 棋盘格纹理 (类似Shadertoy)
 uniform vec3 iChannelResolution;  // 声明为vec3数组
+uniform int iFrame;           // 添加 iFrame 变量 (类似Shadertoy)
 
 // 物理常量
 #define PI 3.141592653589
@@ -326,7 +327,7 @@ void main() {
     // 在main函数顶部添加这些定义
     float timerate = 0.0; // 时间因子，暂时设为0
     vec3 WorldZ = vec3(0.0, 0.0, 1.0); // 世界坐标系Z轴
-    vec3 BHRDiskDir = vec3(0.0, 1.0, 0.0); // 吸积盘方向（法向量）
+    vec3 BHRDiskDir = vec3(0.0, 1.0, 1.0); // 吸积盘方向（法向量）
     float RIn = 2.0 * Rs; // 吸积盘内半径（典型值：3倍史瓦西半径）
     float ROut = 10.0 * Rs; // 吸积盘外半径（典型值：20倍史瓦西半径）
     float diskA = 0.0; // 黑洞角动量参数（0-1，0为无自旋）
@@ -380,5 +381,11 @@ void main() {
         }
     }
     fragColor.a = 1.0;
+
+    // float blendWeight = 1.0-pow(0.5,(iTimeDelta)/max(min((0.131*36.0/(timerate)*(omega(3.*0.00000465,0.00000465))/(omega(3.*Rs,Rs))),0.3),0.02));//本部分在实际使用时max(min((0.131*36.0/(timerate)*(omega(3.*0.00000465,0.00000465))/(omega(3.*Rs,Rs))),0.3),0.02)由uniform输入
+    // blendWeight = (iFrame<2 || iMouse.z > 0.0 ) ? 1.0 : blendWeight;
+    
+    // vec4 previousColor = texelFetch(iChannel3, ivec2(fragCoord), 0); //获取前一帧的颜色
+    // fragColor = (blendWeight)*fragColor+(1.0-blendWeight)*previousColor; //混合当前帧和前一帧
 
 }

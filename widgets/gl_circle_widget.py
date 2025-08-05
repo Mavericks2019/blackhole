@@ -11,7 +11,7 @@ class GLCircleWidget(QOpenGLWidget):
     def __init__(self):
         super().__init__()
         self.setMinimumSize(600, 600)
-        
+        self.iFrame = 0  # 初始帧数
         # 配置MSAA抗锯齿
         fmt = QSurfaceFormat()
         fmt.setSamples(4)  # 4倍多重采样
@@ -45,6 +45,12 @@ class GLCircleWidget(QOpenGLWidget):
 
     def setBackgroundType(self, bg_type):
         self.backgroundType = bg_type
+        self.update()
+
+    def updateTime(self):
+        """更新时间计数器"""
+        self.iTime += 0.016  # 每帧增加约16ms
+        self.iFrame += 1     # 增加帧数计数器
         self.update()
 
     def createChessTexture(self):
@@ -193,7 +199,8 @@ class GLCircleWidget(QOpenGLWidget):
         self.program.setUniformValue("radius", self.radius)
         self.program.setUniformValue("MBlackHole", self.blackHoleMass)
         self.program.setUniformValue("backgroundType", self.backgroundType)  # 设置背景类型
-        
+        self.program.setUniformValue("iFrame", self.iFrame)
+
         # 传递 iMouse 变量 (类似Shadertoy)
         self.program.setUniformValue("iMouse", *self.iMouse)
         # 传递 iTime 变量 (类似Shadertoy)

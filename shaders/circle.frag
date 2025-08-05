@@ -6,8 +6,9 @@ uniform vec2 offset;       // 偏移参数
 uniform float radius;      // 半径参数
 uniform float MBlackHole;  // 黑洞质量（太阳质量单位）
 uniform sampler2D backgroundTexture;  // 背景纹理
-// uniform int backgroundType; // 0: 棋盘, 1: 星空, 2: 纯色
+uniform int backgroundType; // 0: 棋盘, 1: 纯黑, 2: 星空, 3: 纹理
 uniform vec4 iMouse; // 添加 iMouse 变量
+uniform float iTime;              // 添加 iTime 变量 (类似Shadertoy)
 uniform sampler2D iChannel1;         // 棋盘格纹理 (类似Shadertoy)
 uniform vec3 iChannelResolution;  // 声明为vec3数组
 
@@ -161,12 +162,12 @@ float softHold(float x){//使不大于一
 
 float Vec2Theta(vec2 a,vec2 b)//两平面向量夹角,0到2pi
 {
-if(dot(a,b)>0.0){
-    return asin(0.999999*(a.x*b.y-a.y*b.x)/length(a)/length(b));
+    if(dot(a,b)>0.0){
+        return asin(0.999999*(a.x*b.y-a.y*b.x)/length(a)/length(b));
     }else if(dot(a,b)<0.0 && (-a.x*b.y+a.y*b.x)<0.0){
-    return PI-asin(0.999999*(a.x*b.y-a.y*b.x)/length(a)/length(b));
+        return PI-asin(0.999999*(a.x*b.y-a.y*b.x)/length(a)/length(b));
     }else if(dot(a,b)<0.0 && (-a.x*b.y+a.y*b.x)>0.0){
-    return -PI-asin(0.999999*(a.x*b.y-a.y*b.x)/length(a)/length(b));
+        return -PI-asin(0.999999*(a.x*b.y-a.y*b.x)/length(a)/length(b));
     }
 }
 
@@ -225,7 +226,7 @@ vec3 GetBH(vec4 a,vec3 BHPos,vec3 DiskDir)//BH系平移旋转
     {
     vec3 vecz =vec3( 0.0,0.0,1.0 );
     if(DiskDir==vecz){
-    DiskDir+=0.0001*(vec3(1.0,0.,0.));
+        DiskDir+=0.0001*(vec3(1.0,0.,0.));
     }
      vec3 _X = normalize(cross(vecz, DiskDir));
      vec3 _Y = normalize(cross(DiskDir, _X));
@@ -286,19 +287,24 @@ vec4 diskcolor(vec4 fragColor,float timerate,float steplength,vec3 RayPos,vec3 l
     return fragColor + color*(1.0-fragColor.a);
 }
 
+float RandomStep(vec2 xy, float seed)//用于光线起点抖动的随机
+{
+    return fract(sin(dot(xy.xy+fract(11.4514*sin(seed)), vec2(12.9898, 78.233)))* 43758.5453);
+}
+
 void main() {
     // 使用传入的黑洞质量参数
     fragColor = vec4(0.,0.,0.,0.);
     vec2 uv = gl_FragCoord.xy / iResolution.xy;
 
-    float MBH = 1.49e7;//单位是太阳质量                                                                                            本部分在实际使用时uniform输入
+    float MBH = 1.49e7;//单位是太阳质量本部分在实际使用时uniform输入
     float Rs = 2.*MBH*G0 / lightspeed / lightspeed * Msun;//单位是米 
     Rs=Rs/ly;//现在单位是ly 
     
     // 设置相机位置和黑洞位置
-    vec4 BHAPos = vec4(2.*Rs, 0.0, 0.0, 1.0);//黑洞世界位置                                                                        本部分在实际使用时没有
+    vec4 BHAPos = vec4(2.*Rs, 0.0, 0.0, 1.0);//黑洞世界位置本部分在实际使用时没有
     vec3 BHRPos = GetCamera(BHAPos).xyz; //
-    vec3 RayDir = uvToDir(uv);
+    vec3 RayDir=uvToDir(uv+0.5*vec2(RandomStep(uv, fract(iTime * 1.0+0.5)),RandomStep(uv, fract(iTime * 1.0)))/iResolution.xy);
     vec3 RayPos = vec3(0.0,0.0,20.*Rs);
     vec3 lastRayPos;
     vec3 lastRayDir;
@@ -334,7 +340,11 @@ void main() {
         costheta = length(cross(NPosToBH,RayDir));//前进方向与切向夹角
         dphirate = -1.0*costheta*costheta*costheta*(1.5*Rs/Dis);//单位长度光偏折角
 
-        dl = 1.0;
+        if(count==0){
+            dl=RandomStep(uv, fract(iTime * 1.0));//光起步步长抖动
+        }else{
+            dl=1.0;
+        }
         dl *= 0.15;
         dl *= Dis;
 
@@ -353,9 +363,17 @@ void main() {
         count++;
         if(Dis>(100.*Rs) && Dis>lastR && count>50){//远离黑洞
             flag = false;
-            uv = DirTouv(RayDir);
-            fragColor+=0.5*texelFetch(iChannel1, ivec2(vec2(fract(uv.x),fract(uv.y))*iChannelResolution.xy), 0)*(1.0-fragColor.a);            
-            //fragColor += vec4(.25)*(1.0-fragColor.a);
+            
+            // 根据背景类型选择不同的背景
+            if (backgroundType == 0) { // 棋盘背景
+                uv = DirTouv(RayDir);
+                fragColor+=0.5*texelFetch(iChannel1, ivec2(vec2(fract(uv.x),fract(uv.y))*iChannelResolution.xy), 0)*(1.0-fragColor.a);            
+            } else if (backgroundType == 1) { // 纯黑背景
+                fragColor += vec4(0.0, 0.0, 0.0, 1.0) * (1.0 - fragColor.a);
+            } else { // 其他背景类型暂时使用棋盘背景
+                uv = DirTouv(RayDir);
+                fragColor+=0.5*texelFetch(iChannel1, ivec2(vec2(fract(uv.x),fract(uv.y))*iChannelResolution.xy), 0)*(1.0-fragColor.a);
+            }
         }
         if(Dis < 0.1 * Rs){//命中奇点
             flag = false;

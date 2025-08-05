@@ -5,6 +5,8 @@ from PyQt6.QtCore import Qt
 from PyQt6.QtCore import pyqtSignal
 
 class ControlPanel(QFrame):
+    backgroundTypeChanged = pyqtSignal(int)  # 背景类型信号
+    
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setFrameShape(QFrame.Shape.StyledPanel)
@@ -25,134 +27,53 @@ class ControlPanel(QFrame):
         separator.setFrameShadow(QFrame.Shadow.Sunken)
         control_layout.addWidget(separator)
         
-        # 颜色控制部分
-        self.color_group = QGroupBox("Accretion Disk Color")
-        color_layout = QVBoxLayout(self.color_group)
-        color_layout.setSpacing(8)
-        
-        # 自定义颜色按钮
-        self.custom_btn = QPushButton("Custom Color")
-        self.custom_btn.clicked.connect(self.customColorRequested)
-        color_layout.addWidget(self.custom_btn)
-        
-        control_layout.addWidget(self.color_group)
-
-        # 背景选择部分
+        # 背景选择部分 - 修复这里
         self.bg_group = QGroupBox("Background Type")
         bg_layout = QVBoxLayout(self.bg_group)
         bg_layout.setSpacing(8)
+        bg_layout.setContentsMargins(10, 20, 10, 10)  # 增加上边距给标题空间
 
-        # 创建一个按钮布局
+        # 创建按钮布局 - 修复这里
         bg_button_layout = QHBoxLayout()
-        bg_layout.addLayout(bg_button_layout)
+        bg_button_layout.setSpacing(5)  # 减少按钮间距
 
-        # 背景类型选择按钮
+        # 背景类型选择按钮 - 修复这里
         self.bg_chess_btn = QPushButton("Chess")
-        self.bg_chess_btn.setCheckable(True)  # 使按钮可选中
-        self.bg_chess_btn.setChecked(True)    # 默认选中
-        self.bg_chess_btn.setObjectName("bg_chess_btn")  # 设置对象名用于样式
+        self.bg_chess_btn.setCheckable(True)
+        self.bg_chess_btn.setChecked(True)
+        self.bg_chess_btn.setObjectName("bg_chess_btn")
+        self.bg_chess_btn.setFixedHeight(30)  # 限制按钮高度
         self.bg_chess_btn.clicked.connect(lambda: self.setBackgroundType(0))
         bg_button_layout.addWidget(self.bg_chess_btn)
+
+        self.bg_black_btn = QPushButton("Black")
+        self.bg_black_btn.setCheckable(True)
+        self.bg_black_btn.setObjectName("bg_black_btn")
+        self.bg_black_btn.setFixedHeight(30)  # 限制按钮高度
+        self.bg_black_btn.clicked.connect(lambda: self.setBackgroundType(1))
+        bg_button_layout.addWidget(self.bg_black_btn)
 
         self.bg_stars_btn = QPushButton("Stars")
         self.bg_stars_btn.setCheckable(True)
         self.bg_stars_btn.setObjectName("bg_stars_btn")
-        self.bg_stars_btn.clicked.connect(lambda: self.setBackgroundType(1))
+        self.bg_stars_btn.setFixedHeight(30)  # 限制按钮高度
+        self.bg_stars_btn.clicked.connect(lambda: self.setBackgroundType(2))
         bg_button_layout.addWidget(self.bg_stars_btn)
-
-        self.bg_solid_btn = QPushButton("Solid")
-        self.bg_solid_btn.setCheckable(True)
-        self.bg_solid_btn.setObjectName("bg_solid_btn")
-        self.bg_solid_btn.clicked.connect(lambda: self.setBackgroundType(2))
-        bg_button_layout.addWidget(self.bg_solid_btn)
 
         self.bg_texture_btn = QPushButton("Texture")
         self.bg_texture_btn.setCheckable(True)
         self.bg_texture_btn.setObjectName("bg_texture_btn")
+        self.bg_texture_btn.setFixedHeight(30)  # 限制按钮高度
         self.bg_texture_btn.clicked.connect(lambda: self.setBackgroundType(3))
         bg_button_layout.addWidget(self.bg_texture_btn)
         
-        # 在颜色控制部分后添加背景选择组
+        # 添加按钮布局到组框
+        bg_layout.addLayout(bg_button_layout)
+        
         control_layout.addWidget(self.bg_group)
-
-        # 黑洞质量控制部分
-        self.mass_group = QGroupBox("Black Hole Mass (Solar Masses)")
-        mass_layout = QVBoxLayout(self.mass_group)
-        mass_layout.setSpacing(10)
         
-        mass_label = QLabel("Mass (×10⁶ M☉):")
-        mass_layout.addWidget(mass_label)
-        
-        self.mass_slider = QSlider(Qt.Orientation.Horizontal)
-        self.mass_slider.setRange(10, 1000)  # 0.1亿到10亿太阳质量
-        self.mass_slider.setValue(149)       # 默认1.49e7 (1.49 × 10^7)
-        self.mass_slider.setTickPosition(QSlider.TickPosition.TicksBelow)
-        self.mass_slider.setTickInterval(100)
-        self.mass_slider.valueChanged.connect(self.onMassChanged)
-        mass_layout.addWidget(self.mass_slider)
-        
-        self.mass_value_label = QLabel("1.49 × 10⁷")
-        mass_layout.addWidget(self.mass_value_label)
-        
-        control_layout.addWidget(self.mass_group)
-        
-        # 偏移控制部分
-        self.offset_group = QGroupBox("Disk Offset")
-        offset_layout = QVBoxLayout(self.offset_group)
-        offset_layout.setSpacing(10)
-        
-        # X偏移
-        x_layout = QHBoxLayout()
-        x_label = QLabel("X Offset:")
-        x_layout.addWidget(x_label)
-        self.x_slider = QSlider(Qt.Orientation.Horizontal)
-        self.x_slider.setRange(-100, 100)
-        self.x_slider.setValue(20)  # 默认0.2
-        self.x_slider.setTickPosition(QSlider.TickPosition.TicksBelow)
-        self.x_slider.setTickInterval(10)
-        self.x_slider.valueChanged.connect(self.onOffsetChanged)
-        x_layout.addWidget(self.x_slider)
-        self.x_value_label = QLabel("0.20")
-        x_layout.addWidget(self.x_value_label)
-        offset_layout.addLayout(x_layout)
-        
-        # Y偏移
-        y_layout = QHBoxLayout()
-        y_label = QLabel("Y Offset:")
-        y_layout.addWidget(y_label)
-        self.y_slider = QSlider(Qt.Orientation.Horizontal)
-        self.y_slider.setRange(-100, 100)
-        self.y_slider.setValue(20)  # 默认0.2
-        self.y_slider.setTickPosition(QSlider.TickPosition.TicksBelow)
-        self.y_slider.setTickInterval(10)
-        self.y_slider.valueChanged.connect(self.onOffsetChanged)
-        y_layout.addWidget(self.y_slider)
-        self.y_value_label = QLabel("0.20")
-        y_layout.addWidget(self.y_value_label)
-        offset_layout.addLayout(y_layout)
-        
-        control_layout.addWidget(self.offset_group)
-        
-        # 半径控制部分
-        self.radius_group = QGroupBox("Disk Radius")
-        radius_layout = QVBoxLayout(self.radius_group)
-        radius_layout.setSpacing(10)
-        
-        radius_label = QLabel("Radius:")
-        radius_layout.addWidget(radius_label)
-        
-        self.radius_slider = QSlider(Qt.Orientation.Horizontal)
-        self.radius_slider.setRange(1, 100)
-        self.radius_slider.setValue(20)  # 默认0.2
-        self.radius_slider.setTickPosition(QSlider.TickPosition.TicksBelow)
-        self.radius_slider.setTickInterval(5)
-        self.radius_slider.valueChanged.connect(self.onRadiusChanged)
-        radius_layout.addWidget(self.radius_slider)
-        
-        self.radius_value_label = QLabel("0.20")
-        radius_layout.addWidget(self.radius_value_label)
-        
-        control_layout.addWidget(self.radius_group)
+        # 添加拉伸因子使控件居中
+        control_layout.addStretch(1)
         
         # 宽高比信息
         self.ratio_group = QGroupBox("Aspect Ratio")
@@ -168,33 +89,11 @@ class ControlPanel(QFrame):
         
         control_layout.addWidget(self.ratio_group)
         
-        # 添加拉伸因子使控件居中
-        control_layout.addStretch(1)
-        
-        # 信息面板
-        self.info_group = QGroupBox("Information")
-        info_layout = QVBoxLayout(self.info_group)
-        
-        info_label = QLabel(
-            "<b>Black Hole Visualization</b><br><br>"
-            "This demo simulates a black hole using OpenGL 4.3 core profile.<br><br>"
-            "<b>Features:</b><br>"
-            "- MSAA 4x anti-aliasing<br>"
-            "- GLSL 430 shaders<br>"
-            "- Realistic Schwarzschild radius calculation<br>"
-            "- Adjustable black hole mass<br>"
-            "- Interactive controls"
-        )
-        info_label.setWordWrap(True)
-        info_layout.addWidget(info_label)
-        
-        control_layout.addWidget(self.info_group)
-        
-        # 添加应用信息
+        # 添加页脚
         self.footer_label = QLabel("© 2023 OpenGL PyQt6 Demo | Dark Theme | MSAA Enabled")
         self.footer_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         control_layout.addWidget(self.footer_label)
-        
+
     def setAspectRatio(self, ratio_text):
         """设置宽高比显示文本"""
         self.ratio_label.setText(ratio_text)
@@ -202,6 +101,28 @@ class ControlPanel(QFrame):
         # 添加这个方法
     def setBackgroundType(self, bg_type):
         """设置背景类型并发出信号"""
+        # 确保只有一个按钮被选中
+        if bg_type == 0:
+            self.bg_chess_btn.setChecked(True)
+            self.bg_black_btn.setChecked(False)
+            self.bg_stars_btn.setChecked(False)
+            self.bg_texture_btn.setChecked(False)
+        elif bg_type == 1:
+            self.bg_chess_btn.setChecked(False)
+            self.bg_black_btn.setChecked(True)
+            self.bg_stars_btn.setChecked(False)
+            self.bg_texture_btn.setChecked(False)
+        elif bg_type == 2:
+            self.bg_chess_btn.setChecked(False)
+            self.bg_black_btn.setChecked(False)
+            self.bg_stars_btn.setChecked(True)
+            self.bg_texture_btn.setChecked(False)
+        elif bg_type == 3:
+            self.bg_chess_btn.setChecked(False)
+            self.bg_black_btn.setChecked(False)
+            self.bg_stars_btn.setChecked(False)
+            self.bg_texture_btn.setChecked(True)
+            
         self.backgroundTypeChanged.emit(bg_type)
 
     def onOffsetChanged(self):

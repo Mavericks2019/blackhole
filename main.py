@@ -164,102 +164,8 @@ class MainWindow(QMainWindow):
         
         # 标题样式
         title_label = self.circle_control.findChild(QLabel, None)
-        if title_label and "OpenGL Circle Controls" in title_label.text():
+        if title_label and "OpenGL Black Hole Controls" in title_label.text():
             title_label.setStyleSheet("font-size: 18px; font-weight: bold; color: #d0d0ff; padding: 10px 0;")
-        
-        # 分隔线样式
-        for separator in self.circle_control.findChildren(QFrame):
-            if separator.frameShape() == QFrame.Shape.HLine:
-                separator.setStyleSheet("background-color: #3a3a4a;")
-        
-        # 组框样式
-        group_style = """
-            QGroupBox {
-                font-weight: bold;
-                color: #a0a0c0;
-                border: 1px solid #3a3a4a;
-                border-radius: 5px;
-                margin-top: 1ex;
-                background-color: rgba(40, 40, 50, 180);
-            }
-            QGroupBox::title {
-                subcontrol-origin: margin;
-                left: 10px;
-                padding: 0 5px;
-                color: #c0c0ff;
-            }
-        """
-        
-        for group in self.circle_control.findChildren(QGroupBox):
-            group.setStyleSheet(group_style)
-            
-            # 特定组内标签样式
-            for label in group.findChildren(QLabel):
-                if "Size:" in label.text() or "Current:" in label.text() or "Radius:" in label.text() or "Offset:" in label.text() or "Mass" in label.text():
-                    label.setStyleSheet("font-weight: bold; color: #d0d0ff;")
-                else:
-                    label.setStyleSheet("color: #c0c0d0;")
-        
-        # 自定义按钮样式
-        self.circle_control.custom_btn.setStyleSheet("""
-            QPushButton {
-                background-color: #505060;
-                color: #e0e0ff;
-                border: 1px solid #666677;
-                border-radius: 5px;
-                padding: 8px;
-                font-weight: bold;
-                min-height: 30px;
-            }
-            QPushButton:hover {
-                background-color: #606070;
-                border: 2px solid #8888aa;
-            }
-            QPushButton:pressed {
-                background-color: #404050;
-            }
-        """)
-        
-        # 滑块样式（应用于所有滑块）
-        slider_style = """
-            QSlider::groove:horizontal {
-                border: 1px solid #3a3a4a;
-                height: 8px;
-                background: #404050;
-                border-radius: 4px;
-            }
-            QSlider::handle:horizontal {
-                background: #a0a0c0;
-                border: 1px solid #5a5a6a;
-                width: 18px;
-                margin: -4px 0;
-                border-radius: 9px;
-            }
-            QSlider::handle:horizontal:hover {
-                background: #b0b0d0;
-                border: 1px solid #7a7a8a;
-            }
-            QSlider::sub-page:horizontal {
-                background: #6a6a8a;
-                border-radius: 4px;
-            }
-        """
-        
-        # 应用滑块样式
-        for slider in self.circle_control.findChildren(QSlider):
-            slider.setStyleSheet(slider_style)
-        
-        # 信息标签样式
-        info_group = self.circle_control.findChild(QGroupBox, "info_group")
-        if info_group:
-            for label in info_group.findChildren(QLabel):
-                label.setStyleSheet("color: #c0c0d0;")
-        
-        # 页脚样式
-        self.circle_control.footer_label.setStyleSheet("color: #9090a0; font-size: 10px; margin-top: 10px;")
-        
-        # 质量值标签样式
-        self.circle_control.mass_value_label.setStyleSheet("font-weight: bold; color: #d0d0ff;")
         
         # 背景按钮样式
         bg_button_style = """
@@ -268,10 +174,11 @@ class MainWindow(QMainWindow):
                 color: #e0e0ff;
                 border: 1px solid #666677;
                 border-radius: 5px;
-                padding: 8px;
+                padding: 4px;
                 font-weight: bold;
-                min-height: 30px;
-                min-width: 80px;
+                min-height: 20px;
+                min-width: 60px;
+                font-size: 12px;
             }
             QPushButton:hover {
                 background-color: #606070;
@@ -279,19 +186,21 @@ class MainWindow(QMainWindow):
             }
             QPushButton:pressed {
                 background-color: #404050;
+                border: 2px solid #a0a0c0;
             }
             QPushButton:checked {
                 background-color: #6a6a8a;
                 border: 2px solid #a0a0c0;
                 color: #ffffff;
+                font-weight: bold;
             }
             #bg_chess_btn:checked {
                 background-color: #5a7a8a;
             }
-            #bg_stars_btn:checked {
+            #bg_black_btn:checked {
                 background-color: #5a6a9a;
             }
-            #bg_solid_btn:checked {
+            #bg_stars_btn:checked {
                 background-color: #6a7a7a;
             }
             #bg_texture_btn:checked {
@@ -301,9 +210,16 @@ class MainWindow(QMainWindow):
         
         # 应用样式到背景按钮
         self.circle_control.bg_chess_btn.setStyleSheet(bg_button_style)
+        self.circle_control.bg_black_btn.setStyleSheet(bg_button_style)
         self.circle_control.bg_stars_btn.setStyleSheet(bg_button_style)
-        self.circle_control.bg_solid_btn.setStyleSheet(bg_button_style)
         self.circle_control.bg_texture_btn.setStyleSheet(bg_button_style)
+        
+        # 添加程序化反馈 - 当按钮状态改变时强制重绘
+        for btn in [self.circle_control.bg_chess_btn, 
+                    self.circle_control.bg_black_btn, 
+                    self.circle_control.bg_stars_btn, 
+                    self.circle_control.bg_texture_btn]:
+            btn.clicked.connect(lambda: btn.update())
 
     def applyBasicControlStyles(self):
         """应用基本功能控制面板的样式"""
@@ -380,12 +296,7 @@ class MainWindow(QMainWindow):
     def connectSignals(self):
         """连接所有信号"""
         # 圆形演示信号
-        self.circle_control.customColorClicked.connect(self.chooseCustomColor)
-        self.circle_control.offsetChanged.connect(self.circle_canvas.setCircleOffset)
-        self.circle_control.radiusChanged.connect(self.circle_canvas.setCircleRadius)
-        self.circle_control.requestAspectRatioUpdate.connect(self.updateAspectRatio)
-        self.circle_control.massChanged.connect(self.circle_canvas.setBlackHoleMass)
-        self.circle_control.backgroundTypeChanged.connect(self.circle_canvas.setBackgroundType)  # 连接背景类型信号
+        self.circle_control.backgroundTypeChanged.connect(self.circle_canvas.setBackgroundType)
         
         # 基本功能信号
         # self.basic_control.rotateRequested.connect(self.basic_canvas.rotateTriangle)
@@ -415,16 +326,6 @@ class MainWindow(QMainWindow):
             ratio_text = f"Current: 1 : {aspect:.2f}"
         
         self.circle_control.setAspectRatio(ratio_text)
-
-    def chooseCustomColor(self):
-        """打开颜色对话框选择自定义颜色"""
-        # 使用深色主题的颜色对话框
-        color = QColorDialog.getColor(options=QColorDialog.ColorDialogOption.DontUseNativeDialog)
-        if color.isValid():
-            r = color.red() / 255.0
-            g = color.green() / 255.0
-            b = color.blue() / 255.0
-            self.circle_canvas.setCircleColor(r, g, b)
 
     def resizeEvent(self, event):
         """窗口大小改变事件"""

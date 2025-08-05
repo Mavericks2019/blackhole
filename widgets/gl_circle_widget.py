@@ -3,7 +3,7 @@ import os
 import numpy as np
 from PyQt6.QtOpenGLWidgets import QOpenGLWidget
 from PyQt6.QtOpenGL import QOpenGLShaderProgram, QOpenGLShader
-from PyQt6.QtCore import Qt, QFile, QTextStream, QPoint
+from PyQt6.QtCore import Qt, QFile, QTextStream, QPoint, QTimer
 from PyQt6.QtGui import QSurfaceFormat, QMouseEvent, QImage
 from OpenGL import GL as gl
 
@@ -28,7 +28,7 @@ class GLCircleWidget(QOpenGLWidget):
         self.blackHoleMass = 1.49e7  # 默认黑洞质量 (太阳质量单位)
         self.background_texture = None  # 添加背景纹理
         self.chess_texture = None       # 添加棋格纹理 (iChannel1)
-        self.backgroundType = 0  # 0: 棋盘, 1: 星空, 2: 纯色, 3: 纹理
+        self.backgroundType = 0  # 0: 棋盘, 1: 纯黑, 2: 星空, 3: 纹理
         self.chess_texture_resolution = [64.0, 64.0, 0.0]  # 棋格纹理分辨率 (宽, 高, 深度)
         
         # 添加 iMouse 变量 (类似Shadertoy的实现)
@@ -36,6 +36,12 @@ class GLCircleWidget(QOpenGLWidget):
         self.mousePressed = False  # 跟踪鼠标按下状态
         self.setMouseTracking(True)  # 启用鼠标跟踪
         self.lastMousePos = QPoint()  # 添加变量记录上次鼠标位置
+        
+        # 添加 iTime 变量 (类似Shadertoy)
+        self.iTime = 0.0  # 初始时间
+        self.timer = QTimer(self)
+        self.timer.timeout.connect(self.updateTime)
+        self.timer.start(16)  # 约60FPS
 
     def setBackgroundType(self, bg_type):
         self.backgroundType = bg_type
@@ -97,6 +103,11 @@ class GLCircleWidget(QOpenGLWidget):
                 return None
             return shader
         return None
+
+    def updateTime(self):
+        """更新时间计数器"""
+        self.iTime += 0.016  # 每帧增加约16ms
+        self.update()
 
     def initializeGL(self):
         # 配置OpenGL 4.3核心模式 (已经在构造函数中设置过，这里确保)
@@ -185,6 +196,8 @@ class GLCircleWidget(QOpenGLWidget):
         
         # 传递 iMouse 变量 (类似Shadertoy)
         self.program.setUniformValue("iMouse", *self.iMouse)
+        # 传递 iTime 变量 (类似Shadertoy)
+        self.program.setUniformValue("iTime", self.iTime)
         
         # 传递棋格纹理分辨率 (iChannelResolution[1])
         self.program.setUniformValue("iChannelResolution", 
@@ -280,24 +293,4 @@ class GLCircleWidget(QOpenGLWidget):
         self.iMouse[2] += delta.x()
         self.iMouse[3] -= delta.y()  # Y轴方向相反
         
-        self.update()
-        
-    def setCircleColor(self, r, g, b):
-        """设置圆形颜色"""
-        self.circleColor = [r, g, b]
-        self.update()
-        
-    def setCircleOffset(self, x, y):
-        """设置圆形偏移位置"""
-        self.offset = [x, y]
-        self.update()
-        
-    def setCircleRadius(self, radius):
-        """设置圆形半径"""
-        self.radius = radius
-        self.update()
-        
-    def setBlackHoleMass(self, mass):
-        """设置黑洞质量（太阳质量单位）"""
-        self.blackHoleMass = mass
         self.update()

@@ -54,6 +54,32 @@ vec4 GetCamera(vec4 a)//相机系平移旋转  本部分在实际使用时unifor
         return a;
 }
 
+// vec3 WorldToBlackHoleSpace(vec4 Position, vec3 BlackHolePos, vec3 DiskNormal,vec3 WorldUp)
+// {
+//     if (DiskNormal == WorldUp)
+//     {
+//         DiskNormal += 0.0001 * vec3(1.0, 0.0, 0.0);
+//     }
+
+//     vec3 BlackHoleSpaceY = normalize(DiskNormal);
+//     vec3 BlackHoleSpaceZ = normalize(cross(WorldUp, BlackHoleSpaceY));
+//     vec3 BlackHoleSpaceX = normalize(cross(BlackHoleSpaceY, BlackHoleSpaceZ));
+
+//     mat4x4 Translate = mat4x4(1.0, 0.0, 0.0, -BlackHolePos.x,
+//                               0.0, 1.0, 0.0, -BlackHolePos.y,
+//                               0.0, 0.0, 1.0, -BlackHolePos.z,
+//                               0.0, 0.0, 0.0, 1.0);
+
+//     mat4x4 Rotate = mat4x4(BlackHoleSpaceX.x, BlackHoleSpaceX.y, BlackHoleSpaceX.z, 0.0,
+//                            BlackHoleSpaceY.x, BlackHoleSpaceY.y, BlackHoleSpaceY.z, 0.0,
+//                            BlackHoleSpaceZ.x, BlackHoleSpaceZ.y, BlackHoleSpaceZ.z, 0.0,
+//                            0.0,               0.0,               0.0,               1.0);
+
+//     Position = transpose(Translate) * Position;
+//     Position = transpose(Rotate)    * Position;
+//     return Position.xyz;
+// }
+
 vec4 GetCameraRot(vec4 a)//摄影机系旋转，用于矢量换系   本部分在实际使用时uniform输入
 {
 float _Theta=4.0*PI*iMouse.x/iResolution.x;
@@ -206,7 +232,7 @@ vec3 GetBHRot(vec4 a,vec3 BHPos,vec3 DiskDir)//BH系旋转
     return a.xyz;
 }
 
-vec4 diskcolor(vec4 fragColor,float timerate,float steplength,vec3 RayPos,vec3 lastRayPos,vec3 RayDir,vec3 lastRayDir,vec3 WorldZ,vec3 BHPos,vec3 DiskDir,float Rs,float RIn,float ROut,float diskA,float TPeak4,float shiftMax){//吸积盘
+vec4 diskColor(vec4 fragColor,float timerate,float steplength,vec3 RayPos,vec3 lastRayPos,vec3 RayDir,vec3 lastRayDir,vec3 WorldZ,vec3 BHPos,vec3 DiskDir,float Rs,float RIn,float ROut,float diskA,float TPeak4,float shiftMax){//吸积盘
     vec3 CamOnDisk=GetBH(vec4(0.,0.,0.,1.0),BHPos,DiskDir);//黑洞系下相机位置
     vec3 References=GetBHRot(vec4(WorldZ,1.0),BHPos,DiskDir);//用于吸积盘角度零点确定
     vec3 PosOnDisk=GetBH(vec4(RayPos,1.0),BHPos,DiskDir);//光线黑洞系下位置
@@ -227,6 +253,150 @@ vec4 diskcolor(vec4 fragColor,float timerate,float steplength,vec3 RayPos,vec3 l
 
     return fragColor + color*(1.0-fragColor.a);
 }
+
+// vec3 ApplyBlackHoleRotation(vec4 Position, vec3 BlackHolePos, vec3 DiskNormal,vec3 WorldUp)
+// {
+//     if (DiskNormal == WorldUp)
+//     {
+//         DiskNormal += 0.0001 * vec3(1.0, 0.0, 0.0);
+//     }
+
+//     vec3 BlackHoleSpaceY = normalize(DiskNormal);
+//     vec3 BlackHoleSpaceZ = normalize(cross(WorldUp, BlackHoleSpaceY));
+//     vec3 BlackHoleSpaceX = normalize(cross(BlackHoleSpaceY, BlackHoleSpaceZ));
+
+//     mat4x4 Rotate = mat4x4(BlackHoleSpaceX.x, BlackHoleSpaceX.y, BlackHoleSpaceX.z, 0.0,
+//                            BlackHoleSpaceY.x, BlackHoleSpaceY.y, BlackHoleSpaceY.z, 0.0,
+//                            BlackHoleSpaceZ.x, BlackHoleSpaceZ.y, BlackHoleSpaceZ.z, 0.0,
+//                            0.0,               0.0,               0.0,               1.0);
+
+//     Position = transpose(Rotate) * Position;
+//     return Position.xyz;
+// }
+
+// float Shape(float x, float Alpha, float Beta)
+// {
+//     float k = pow(Alpha + Beta, Alpha + Beta) / (pow(Alpha, Alpha) * pow(Beta, Beta));
+//     return k * pow(x, Alpha) * pow(1.0 - x, Beta);
+// }
+
+// vec4 DiskColor(vec4 BaseColor, float TimeRate, float StepLength, vec3 RayPos, vec3 LastRayPos,
+//                vec3 RayDir, vec3 LastRayDir, vec3 WorldUp, vec3 BlackHolePos, vec3 DiskNormal,
+//                float Rs, float InterRadius, float OuterRadius, float DiskTemperatureArgument,
+//                float QuadraticedPeakTemperature, float ShiftMax)
+// {
+//     vec3 CameraPos = WorldToBlackHoleSpace(vec4(0.0, 0.0, 0.0, 1.0), BlackHolePos, DiskNormal, WorldUp);
+//     vec3 PosOnDisk = WorldToBlackHoleSpace(vec4(RayPos, 1.0),        BlackHolePos, DiskNormal, WorldUp);
+//     vec3 DirOnDisk = ApplyBlackHoleRotation(vec4(RayDir, 1.0),       BlackHolePos, DiskNormal, WorldUp);
+
+//     float PosR = length(PosOnDisk.zx);
+//     float PosY = PosOnDisk.y;
+
+//     vec4 Color = vec4(0.0);
+//     if (abs(PosY) < 0.5 * Rs && PosR < OuterRadius && PosR > InterRadius)
+//     {
+//         float EffectiveRadius = 1.0 - ((PosR - InterRadius) / (OuterRadius - InterRadius) * 0.5);
+//         if ((OuterRadius - InterRadius) > 9.0 * Rs)
+//         {
+//             if (PosR < 5.0 * Rs + InterRadius)
+//             {
+//                 EffectiveRadius = 1.0 - ((PosR - InterRadius) / (9.0 * Rs) * 0.5);
+//             }
+//             else
+//             {
+//                 EffectiveRadius = 1.0 - (0.5 / 0.9 * 0.5 + ((PosR - InterRadius) / (OuterRadius - InterRadius) -
+//                                   5.0 * Rs / (OuterRadius - InterRadius)) / (1.0 - 5.0 * Rs / (OuterRadius - InterRadius)) * 0.5);
+//             }
+//         }
+
+//         if ((abs(PosY) < 0.5 * Rs * Shape(EffectiveRadius, 4.0, 0.9)) || (PosY < 0.5 * Rs * (1.0 - 5.0 * pow(2.0 * (1.0 - EffectiveRadius), 2.0))))
+//         {
+//             float AngularVelocity  = GetKeplerianAngularVelocity(PosR, Rs);
+//             float HalfPiTimeInside = kPi / GetKeplerianAngularVelocity(3.0 * Rs, Rs);
+
+//             float SpiralTheta=12.0*2.0/sqrt(3.0)*(atan(sqrt(0.6666666*(PosR/Rs)-1.0)));
+//             float InnerTheta= kPi / HalfPiTimeInside *iTime * TimeRate ;
+//             float PosThetaForInnerCloud = Vec2ToTheta(PosOnDisk.zx, vec2(cos(0.666666*InnerTheta),sin(0.666666*InnerTheta)));
+//             float PosTheta            = Vec2ToTheta(PosOnDisk.zx, vec2(cos(-SpiralTheta), sin(-SpiralTheta)));
+
+//             // 计算盘温度
+//             float DiskTemperature = pow(DiskTemperatureArgument * pow(max(Rs/PosR,0.10),3.0) * max(1.0 - sqrt(InterRadius / PosR), 0.000001), 0.25);
+//             // 计算云相对速度
+//             vec3  CloudVelocity    = kLightYear / kSpeedOfLight * AngularVelocity * cross(vec3(0., 1., 0.), PosOnDisk);
+//             float RelativeVelocity = dot(-DirOnDisk, CloudVelocity);
+//             // 计算多普勒因子
+//             float Dopler = sqrt((1.0 + RelativeVelocity) / (1.0 - RelativeVelocity));
+//             // 总红移量，含多普勒因子和引力红移和
+//             float RedShift = Dopler * sqrt(max(1.0 - Rs / PosR, 0.000001)) / sqrt(max(1.0 - Rs / length(CameraPos), 0.000001));
+
+//             float Density           = 0.0;
+//             float Thick             = 0.0;
+//             float VerticalMixFactor = 0.0;
+//             float DustColor         = 0.0;
+            
+//             float RotPosR=PosR/Rs+0.3*sqrt(3.0)*kSpeedOfLight/kLightYear /3.0/sqrt(3.0)/Rs*TimeRate*iTime;
+            
+//             vec4  Color0            = vec4(0.0);
+            
+//             Density = Shape(EffectiveRadius, 4.0, 0.9);
+//             if (abs(PosY) < 0.5 * Rs * Density)
+//             {
+//                 Thick = 0.5 * Rs * Density * (0.4 + 0.6 * SoftSaturate(GenerateAccretionDiskNoise(vec3(1.5 * PosTheta,RotPosR, 1.0), 1, 3, 80.0))); // 盘厚
+//                 VerticalMixFactor = max(0.0, (1.0 - abs(PosY) / Thick));
+//                 Density    *= 0.7 * VerticalMixFactor * Density;
+//                 Color0      = vec4(GenerateAccretionDiskNoise(vec3(1.0 * RotPosR, 1.0 * PosY / Rs, 0.5 * PosTheta), 3, 6, 80.0)); // 云本体
+//                 Color0.xyz *= Density * 1.4 * (0.2 + 0.8 * VerticalMixFactor + (0.8 - 0.8 * VerticalMixFactor) *
+//                               GenerateAccretionDiskNoise(vec3(RotPosR, 1.5 * PosTheta, PosY / Rs), 1, 3, 80.0));
+//                 Color0.a   *= (Density); // * (1.0 + VerticalMixFactor);
+//             }
+//             if (abs(PosY) < 0.5 * Rs * (1.0 - 5.0 * pow(2.0 * (1.0 - EffectiveRadius), 2.0)))
+//             {
+//                 DustColor = max(1.0 - pow(PosY / (0.5 * Rs * max(1.0 - 5.0 * pow(2.0 * (1.0 - EffectiveRadius), 2.0), 0.0001)), 2.0), 0.0) * GenerateAccretionDiskNoise(vec3(1.5 * fract((1.5 *  PosThetaForInnerCloud + kPi / HalfPiTimeInside *iTime*TimeRate) / 2.0 / kPi) * 2.0 * kPi, PosR / Rs, PosY / Rs), 0, 6, 80.0);
+//                 Color0 += 0.02 * vec4(vec3(DustColor), 0.2 * DustColor) * sqrt(1.0001 - DirOnDisk.y * DirOnDisk.y) * min(1.0, Dopler * Dopler);
+//             }
+           
+//             Color =  Color0;
+//             Color *= 1.0 + 20.0 * exp(-10.0 * (PosR - InterRadius) / (OuterRadius - InterRadius)); // 内侧增加密度
+
+//             float BrightWithoutRedshift = 4.5 * DiskTemperature * DiskTemperature * DiskTemperature * DiskTemperature / QuadraticedPeakTemperature;  // 原亮度
+//             if (DiskTemperature > 1000.0)
+//             {
+//                 DiskTemperature = max(1000.0, DiskTemperature * RedShift * Dopler * Dopler);
+//             }
+
+//             DiskTemperature = min(100000.0, DiskTemperature);
+
+//             Color.xyz *= BrightWithoutRedshift * min(1.0, 1.8 * (OuterRadius - PosR) / (OuterRadius - InterRadius)) *
+//                          KelvinToRgb(DiskTemperature / exp((PosR - InterRadius) / (0.6 * (OuterRadius - InterRadius))));
+//             Color.xyz *= min(ShiftMax, RedShift) * min(ShiftMax, Dopler);
+
+//             RedShift=min(RedShift,ShiftMax);
+//             Color.xyz *= pow((1.0 - (1.0 - min(1., RedShift)) * (PosR - InterRadius) / (OuterRadius - InterRadius)), 9.0);
+//             Color.xyz *= min(1.0, 1.0 + 0.5 * ((PosR - InterRadius) / InterRadius + InterRadius / (PosR - InterRadius)) - max(1.0, RedShift));
+
+//             Color *= StepLength / Rs;
+//         }
+//     }
+
+//     return BaseColor + Color * (1.0 - BaseColor.a);
+// }
+
+
+// float GenerateAccretionDiskNoise(vec3 Position, int NoiseStartLevel, int NoiseEndLevel, float ContrastLevel)
+// {
+//     float NoiseAccumulator = 10.0;
+//     float NoiseFrequency   = 1.0;
+    
+//     for (int Level = NoiseStartLevel; Level < NoiseEndLevel; ++Level)
+//     {
+//         NoiseFrequency = pow(3.0, float(Level));
+//         vec3 ScaledPosition = vec3(NoiseFrequency * Position.x, NoiseFrequency * Position.y, NoiseFrequency * Position.z);
+
+//         NoiseAccumulator *= (1.0 + 0.1 * PerlinNoise(ScaledPosition));
+//     }
+    
+//     return log(1.0 + pow(0.1 * NoiseAccumulator, ContrastLevel));
+// }
 
 float RandomStep(vec2 xy, float seed)//用于光线起点抖动的随机
 {
@@ -311,7 +481,7 @@ void main() {
         Dis = length(PosToBH);
         NPosToBH = PosToBH/Dis;
 
-        fragColor=diskcolor(fragColor, timerate, steplength, RayPos, lastRayPos, RayDir, lastRayDir, 
+        fragColor=diskColor(fragColor, timerate, steplength, RayPos, lastRayPos, RayDir, lastRayDir, 
                             WorldZ, BHRPos, BHRDiskDir, Rs, RIn, ROut, diskA, TPeak4, shiftMax);//吸积盘颜色
         
         count++;

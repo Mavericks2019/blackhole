@@ -9,8 +9,10 @@ from PyQt6.QtCore import Qt
 # 从其他文件导入组件
 from widgets.gl_circle_widget import GLCircleWidget
 from widgets.gl_basic_widget import GLBasicWidget  # 导入基本功能演示的OpenGL组件
+from widgets.multipass_widget import MultiPassWidget  # 导入多通道渲染组件
 from tabs.control_panel import ControlPanel
 from tabs.basic_control_panel import BasicControlPanel  # 导入基本功能演示的控制面板
+from tabs.multipass_control_panel import MultiPassControlPanel  # 导入多通道渲染控制面板
 
 class MainWindow(QMainWindow):
     def __init__(self):
@@ -90,6 +92,13 @@ class MainWindow(QMainWindow):
         basic_layout.addWidget(self.basic_canvas)
         self.tab_widget.addTab(basic_tab, "Basic Demo")
         
+        # 创建多通道渲染标签页
+        multipass_tab = QWidget()
+        multipass_layout = QVBoxLayout(multipass_tab)
+        self.multipass_canvas = MultiPassWidget()
+        multipass_layout.addWidget(self.multipass_canvas)
+        self.tab_widget.addTab(multipass_tab, "Multi-Pass Demo")
+        
         left_layout.addWidget(self.tab_widget)
         main_layout.addWidget(left_panel, 3)  # 左侧占据3/4空间
         
@@ -105,6 +114,11 @@ class MainWindow(QMainWindow):
         self.basic_control = BasicControlPanel()
         self.applyBasicControlStyles()
         self.control_stack.addWidget(self.basic_control)
+        
+        # 多通道渲染控制面板
+        self.multipass_control = MultiPassControlPanel()
+        self.applyMultiPassControlStyles()
+        self.control_stack.addWidget(self.multipass_control)
         
         main_layout.addWidget(self.control_stack, 1)  # 控制面板占据1/4空间
         
@@ -122,7 +136,9 @@ class MainWindow(QMainWindow):
         """检查着色器文件是否存在"""
         shader_files = [
             "shaders/circle.vert", "shaders/circle.frag",
-            "shaders/basic.vert", "shaders/basic.frag"
+            "shaders/basic.vert", "shaders/basic.frag",
+            "shaders/multipass1.vert", "shaders/multipass1.frag",
+            "shaders/multipass2.vert", "shaders/multipass2.frag"
         ]
         
         missing_files = [f for f in shader_files if not os.path.exists(f)]
@@ -293,6 +309,54 @@ class MainWindow(QMainWindow):
         if footer_label and "©" in footer_label.text():
             footer_label.setStyleSheet("color: #9090a0; font-size: 10px; margin-top: 10px;")
             
+    def applyMultiPassControlStyles(self):
+        """应用多通道渲染控制面板的样式"""
+        self.multipass_control.setStyleSheet("""
+            background-color: #2d2d3a;
+            border-radius: 8px;
+            border: 1px solid #3a3a4a;
+        """)
+        
+        # 标题样式
+        title_label = self.multipass_control.findChild(QLabel, None)
+        if title_label and "Multi-Pass Rendering Controls" in title_label.text():
+            title_label.setStyleSheet("font-size: 18px; font-weight: bold; color: #d0d0ff; padding: 10px 0;")
+        
+        # 分隔线样式
+        for separator in self.multipass_control.findChildren(QFrame):
+            if separator.frameShape() == QFrame.Shape.HLine:
+                separator.setStyleSheet("background-color: #3a3a4a;")
+        
+        # 组框样式
+        group_style = """
+            QGroupBox {
+                font-weight: bold;
+                color: #a0a0c0;
+                border: 1px solid #3a3a4a;
+                border-radius: 5px;
+                margin-top: 1ex;
+                background-color: rgba(40, 40, 50, 180);
+            }
+            QGroupBox::title {
+                subcontrol-origin: margin;
+                left: 10px;
+                padding: 0 5px;
+                color: #c0c0ff;
+            }
+        """
+        
+        for group in self.multipass_control.findChildren(QGroupBox):
+            group.setStyleSheet(group_style)
+            
+            # 标签样式
+            for label in group.findChildren(QLabel):
+                label.setStyleSheet("color: #c0c0d0;")
+        
+        # 页脚样式
+        footer_label = self.multipass_control.findChild(QLabel, None)
+        if footer_label and "©" in footer_label.text():
+            footer_label.setStyleSheet("color: #9090a0; font-size: 10px; margin-top: 10px;")
+
     def connectSignals(self):
         """连接所有信号"""
         # 圆形演示信号
